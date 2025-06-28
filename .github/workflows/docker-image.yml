@@ -71,8 +71,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-            COMMIT=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
 
   send-telegram-message:
     name: 📢 Send Telegram message
