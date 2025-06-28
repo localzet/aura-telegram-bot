@@ -1,30 +1,82 @@
 services:
-  bot:
-#    build:
-    image: ghcr.io/localzet/aura-telegram-bot:latest
+  aura-telegram-bot:
+    image: localzet/aura-telegram-bot:latest
+    container_name: aura-telegram-bot
+    restart: always
+    environment:
+      - PRICE_1=99
+      - PRICE_3=321
+      - PRICE_6=674
+      - PRICE_12=123123
+      - STARS_PRICE_1=99
+      - STARS_PRICE_3=321
+      - STARS_PRICE_6=674
+      - STARS_PRICE_12=123123
 
-    env_file:
-      - .env
+      - TELEGRAM_TOKEN=token
+
+      - REFERRAL_DAYS=7
+
+      - MINI_APP_URL=
+
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres?sslmode=disable
+
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+
+      - AURA_URL=https://example.com
+      - AURA_MODE=remote
+      - AURA_TOKEN=token
+
+      - CRYPTO_PAY_ENABLED=true
+      - CRYPTO_PAY_TOKEN=token
+      - CRYPTO_PAY_URL=https://pay.crypt.bot
+
+      - YOOKASA_ENABLED=true
+      - YOOKASA_SECRET_KEY=key
+      - YOOKASA_SHOP_ID=id
+      - YOOKASA_URL=https://api.yookassa.ru/v3
+      - YOOKASA_EMAIL=exmaple@mail.com
+
+      - TRAFFIC_LIMIT=100
+
+      - TELEGRAM_STARS_ENABLED=true
+
+      - TRIAL_TRAFFIC_LIMIT=20
+      - TRIAL_DAYS=2
+
+      - ADMIN_TELEGRAM_ID=123123123
+
+      - SERVER_STATUS_URL="https://example.com/status"
+      - SUPPORT_URL="https://example.com/support"
+      - FEEDBACK_URL="https://example.com/feedback"
+      - CHANNEL_URL="https://t.me/examplechannel"
+
+      - # Список UUID инбаундов для назначения пользователям, разделенный запятыми
+      - # Например: 773db654-a8b2-413a-a50b-75c3536238fd,bc979bdd-f1fa-4d94-8a51-38a0f518a2a2
+      - INBOUND_UUIDS=
+    networks:
+      - aura-network
+    volumes:
+      - ./translations:/translations
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./translations:/translations
 
-  db:
+  aura-telegram-bot-db:
     image: postgres:17
     container_name: 'aura-telegram-bot-db'
-    hostname: aura-telegram-bot-db
     restart: always
-    env_file:
-      - .env
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - TZ=UTC
     ports:
-      - '127.0.0.1:5432:5432'
+      - '5432:5432'
+    networks:
+      - aura-network
     volumes:
       - aura-telegram-bot-db-data:/var/lib/postgresql/data
     healthcheck:
