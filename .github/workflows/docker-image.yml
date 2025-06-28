@@ -1,57 +1,112 @@
 name: Build docker image
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'
-  workflow_dispatch:
 
 jobs:
-  build-docker-image:
-    runs-on: self-hosted
-    permissions:
-      packages: write
+  send-start-deploy-telegram-message:
+    name: 📢 Send Telegram message
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: 🔧 Checkout source code
+        uses: actions/checkout@v4
+
+      - name: 📬 Send Telegram message
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🏹 Начало деплоя пакета ${{ github.REPOSITORY }}
+            Коммит: ${{ github.event.head_commit.message }}
+            Автор: ${{ github.event.head_commit.author.name }}
+            Время: ${{ github.event.head_commit.timestamp }}
+
+  build-docker-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: 🔧 Checkout source code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Login to GitHub Container Registry
+      - name: 🔧 Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔧 Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 🔧 Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/aura-telegram-shop-bot
-          # Set up proper tagging strategy
-          tags: |
-            # Always include latest tag
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
-            # Use semver tags when Git tag is in semver format
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            # Use the short SHA for non-tag builds
-            type=sha,format=short,prefix=
-            # Include the tag name if it's a tag-triggered build
-            type=ref,event=tag
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
+      - name: 📤 Build and push
         uses: docker/build-push-action@v6
         with:
+          context: .
+          file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            localzet/aura-telegram-bot:latest
+            localzet/aura-telegram-bot:${{github.ref_name}}
+            ghcr.io/localzet/aura-telegram-bot:latest
+            ghcr.io/localzet/aura-telegram-bot:${{github.ref_name}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             COMMIT=${{ github.sha }}
+
+  send-telegram-message:
+    name: 📢 Send Telegram message
+    needs: [ build-docker-image ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔧 Checkout source code
+        uses: actions/checkout@v4
+
+      - name: 📬 Send Telegram message
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ Пакет ${{ github.REPOSITORY }} успешно опубликован
+            Тег: *${{ github.sha }}*
+            Коммит: ${{ github.event.head_commit.message }}
+            Автор: ${{ github.event.head_commit.author.name }}
+            Время: ${{ github.event.head_commit.timestamp }}
+
+  notify-on-error:
+    name: 📢 Send Telegram message
+    runs-on: ubuntu-latest
+    needs: [ build-docker-image ]
+    if: failure()
+    steps:
+      - name: 🔧 Checkout source code
+        uses: actions/checkout@v4
+
+      - name: 🚨 Send error notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Ошибка в ${{ github.REPOSITORY }}: проблемы в сборке
