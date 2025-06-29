@@ -40,6 +40,19 @@ jobs:
       - name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/aura-telegram-bot
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,format=short,prefix=
+            type=ref,event=tag
+
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -71,7 +84,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=${{ github.ref_name }}
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT=${{ github.sha }}
 
   send-telegram-message:
     name: 📢 Send Telegram message
