@@ -208,7 +208,11 @@ func GetAdminTelegramId() int64 {
 const bytesInGigabyte = 1073741824
 
 func InitConfig() {
-	err := godotenv.Load(".env")
+	var err error
+	
+	if _, err := os.Stat(".env"); err == nil {
+		_ = godotenv.Load(".env")
+	}
 
 	conf.adminTelegramId, err = strconv.ParseInt(os.Getenv("ADMIN_TELEGRAM_ID"), 10, 64)
 	if err != nil {
