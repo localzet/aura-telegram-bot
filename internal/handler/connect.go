@@ -64,9 +64,10 @@ func (h Handler) ConnectCallbackHandler(ctx context.Context, b *bot.Bot, update 
 	langCode := update.CallbackQuery.From.LanguageCode
 
 	isDisabled := true
-	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:    callback.Chat.ID,
-		MessageID: callback.ID,
+	// TODO: EditMessageText
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: callback.Chat.ID,
+		//MessageID: callback.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      buildConnectText(customer, langCode),
 		LinkPreviewOptions: &models.LinkPreviewOptions{

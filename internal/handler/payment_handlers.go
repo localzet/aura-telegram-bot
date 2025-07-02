@@ -62,9 +62,10 @@ func (h Handler) BuyCallbackHandler(ctx context.Context, b *bot.Bot, update *mod
 		{Text: h.translation.GetText(langCode, "back_button"), CallbackData: CallbackStart},
 	})
 
-	_, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:    callback.Chat.ID,
-		MessageID: callback.ID,
+	// TODO: EditMessageText
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: callback.Chat.ID,
+		//MessageID: callback.ID,
 		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
