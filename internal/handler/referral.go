@@ -22,9 +22,11 @@ func (h Handler) ReferralCallbackHandler(ctx context.Context, b *bot.Bot, update
 	}
 	text := fmt.Sprintf(h.translation.GetText(langCode, "referral_text"), count)
 	callbackMessage := update.CallbackQuery.Message.Message
-	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:    callbackMessage.Chat.ID,
-		MessageID: callbackMessage.ID,
+
+	// TODO: EditMessageText
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: callbackMessage.Chat.ID,
+		//MessageID: callbackMessage.ID,
 		Text:      text,
 		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{
