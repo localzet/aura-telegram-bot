@@ -8,10 +8,10 @@ WORKDIR /app
 
 COPY --from=modules /go/pkg /go/pkg
 
-COPY . .
-
 RUN apk update && apk add --no-cache ca-certificates tzdata
 RUN update-ca-certificates
+
+COPY . .
 
 ARG TARGETOS
 ARG TARGETOS
