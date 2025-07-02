@@ -209,7 +209,7 @@ const bytesInGigabyte = 1073741824
 
 func InitConfig() {
 	var err error
-	
+
 	if _, err := os.Stat(".env"); err == nil {
 		_ = godotenv.Load(".env")
 	}
