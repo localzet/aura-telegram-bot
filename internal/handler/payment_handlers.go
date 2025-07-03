@@ -48,7 +48,6 @@ func (h Handler) BuyCallbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			CallbackData: fmt.Sprintf("%s?month=%d&amount=%d", CallbackSell, 12, config.Price12()),
 		})
 	}
-
 	keyboard := [][]models.InlineKeyboardButton{}
 
 	if len(priceButtons) == 4 {
@@ -109,9 +108,12 @@ func (h Handler) SellCallbackHandler(ctx context.Context, b *bot.Bot, update *mo
 		{Text: h.translation.GetText(langCode, "back_button"), CallbackData: CallbackBuy},
 	})
 
-	_, err := b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
-		ChatID:    callback.Chat.ID,
-		MessageID: callback.ID,
+	// TODO: EditMessageReplyMarkup
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: callback.Chat.ID,
+		//MessageID: callback.ID,
+		Text:      "Выберите способ оплаты",
+		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
 		},
@@ -161,9 +163,12 @@ func (h Handler) PaymentCallbackHandler(ctx context.Context, b *bot.Bot, update 
 
 	langCode := update.CallbackQuery.From.LanguageCode
 
-	message, err := b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
-		ChatID:    callback.Chat.ID,
-		MessageID: callback.ID,
+	// TODO: EditMessageReplyMarkup
+	message, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: callback.Chat.ID,
+		//MessageID: callback.ID,
+		Text:      "Оплатите",
+		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
