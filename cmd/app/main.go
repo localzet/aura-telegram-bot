@@ -96,6 +96,7 @@ func main() {
 	_, err = b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
 			{Command: "start", Description: "Начать работу с ботом"},
+			{Command: "connect", Description: "Текущее подключение"},
 		},
 		LanguageCode: "ru",
 	})

@@ -69,28 +69,28 @@ func (h Handler) StartCommandHandler(ctx context.Context, b *bot.Bot, update *mo
 
 	inlineKeyboard := h.buildStartKeyboard(existingCustomer, langCode)
 
-	m, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "🧹",
-		ReplyMarkup: models.ReplyKeyboardRemove{
-			RemoveKeyboard: true,
-		},
-	})
+	//m, err := b.SendMessage(ctx, &bot.SendMessageParams{
+	//	ChatID: update.Message.Chat.ID,
+	//	Text:   "🧹",
+	//	ReplyMarkup: models.ReplyKeyboardRemove{
+	//		RemoveKeyboard: true,
+	//	},
+	//})
 
-	if err != nil {
-		slog.Error("Error sending removing reply keyboard", err)
-		return
-	}
+	//if err != nil {
+	//	slog.Error("Error sending removing reply keyboard", err)
+	//	return
+	//}
 
-	_, err = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		MessageID: m.ID,
-	})
+	//_, err = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+	//	ChatID:    update.Message.Chat.ID,
+	//	MessageID: m.ID,
+	//})
 
-	if err != nil {
-		slog.Error("Error deleting message", err)
-		return
-	}
+	//if err != nil {
+	//	slog.Error("Error deleting message", err)
+	//	return
+	//}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -121,9 +121,9 @@ func (h Handler) StartCallbackHandler(ctx context.Context, b *bot.Bot, update *m
 	inlineKeyboard := h.buildStartKeyboard(existingCustomer, langCode)
 
 	// TODO: EditMessageText
-	_, err = b.SendMessage(ctxWithTime, &bot.SendMessageParams{
-		ChatID: callback.Message.Message.Chat.ID,
-		//MessageID: callback.Message.Message.ID,
+	_, err = b.EditMessageText(ctxWithTime, &bot.EditMessageTextParams{
+		ChatID:    callback.Message.Message.Chat.ID,
+		MessageID: callback.Message.Message.ID,
 		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: inlineKeyboard,

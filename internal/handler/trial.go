@@ -30,9 +30,9 @@ func (h Handler) TrialCallbackHandler(ctx context.Context, b *bot.Bot, update *m
 	callback := update.CallbackQuery.Message.Message
 	langCode := update.CallbackQuery.From.LanguageCode
 	// TODO: EditMessageText
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: callback.Chat.ID,
-		//MessageID: callback.ID,
+	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    callback.Chat.ID,
+		MessageID: callback.ID,
 		Text:      h.translation.GetText(langCode, "trial_text"),
 		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{
@@ -66,9 +66,9 @@ func (h Handler) ActivateTrialCallbackHandler(ctx context.Context, b *bot.Bot, u
 	_, err = h.paymentService.ActivateTrial(ctxWithUsername, update.CallbackQuery.From.ID)
 	langCode := update.CallbackQuery.From.LanguageCode
 	// TODO: EditMessageText
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: callback.Chat.ID,
-		//MessageID:   callback.ID,
+	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      callback.Chat.ID,
+		MessageID:   callback.ID,
 		Text:        h.translation.GetText(langCode, "trial_activated"),
 		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{InlineKeyboard: h.createConnectKeyboard(langCode)},

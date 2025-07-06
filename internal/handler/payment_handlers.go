@@ -62,9 +62,9 @@ func (h Handler) BuyCallbackHandler(ctx context.Context, b *bot.Bot, update *mod
 	})
 
 	// TODO: EditMessageText
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: callback.Chat.ID,
-		//MessageID: callback.ID,
+	_, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    callback.Chat.ID,
+		MessageID: callback.ID,
 		ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
@@ -109,11 +109,11 @@ func (h Handler) SellCallbackHandler(ctx context.Context, b *bot.Bot, update *mo
 	})
 
 	// TODO: EditMessageReplyMarkup
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: callback.Chat.ID,
-		//MessageID: callback.ID,
-		Text:      "Выберите способ оплаты",
-		ParseMode: models.ParseModeHTML,
+	_, err := b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
+		ChatID:    callback.Chat.ID,
+		MessageID: callback.ID,
+		//Text:      "Выберите способ оплаты",
+		//ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
 		},
@@ -164,11 +164,11 @@ func (h Handler) PaymentCallbackHandler(ctx context.Context, b *bot.Bot, update 
 	langCode := update.CallbackQuery.From.LanguageCode
 
 	// TODO: EditMessageReplyMarkup
-	message, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: callback.Chat.ID,
-		//MessageID: callback.ID,
-		Text:      "Оплатите",
-		ParseMode: models.ParseModeHTML,
+	message, err := b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
+		ChatID:    callback.Chat.ID,
+		MessageID: callback.ID,
+		//Text:      "Оплатите",
+		//ParseMode: models.ParseModeHTML,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
