@@ -6,10 +6,11 @@ import (
 	"aura-telegram-bot/internal/translation"
 	"context"
 	"fmt"
-	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 	"log/slog"
 	"time"
+
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 )
 
 type SubscriptionService struct {
@@ -64,7 +65,7 @@ func (s *SubscriptionService) getCustomersWithExpiringSubscriptions() (*[]databa
 	return dbCustomers, nil
 }
 
-func (s *SubscriptionService) getDaysUntilExpiration(now time.Time, expireAt time.Time) int {
+func (*SubscriptionService) getDaysUntilExpiration(now time.Time, expireAt time.Time) int {
 	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	expireDate := time.Date(expireAt.Year(), expireAt.Month(), expireAt.Day(), 0, 0, 0, 0, expireAt.Location())
 
