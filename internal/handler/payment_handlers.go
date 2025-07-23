@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"log/slog"
 
 	"aura-telegram-bot/internal/config"
 	"aura-telegram-bot/internal/database"
@@ -195,7 +196,7 @@ func (h Handler) PreCheckoutCallbackHandler(ctx context.Context, b *bot.Bot, upd
 	}
 }
 
-func (h Handler) SuccessPaymentHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (h Handler) SuccessPaymentHandler(ctx context.Context, _ *bot.Bot, update *models.Update) {
 	payload := strings.Split(update.Message.SuccessfulPayment.InvoicePayload, "&")
 	purchaseId, err := strconv.Atoi(payload[0])
 	username := payload[1]
