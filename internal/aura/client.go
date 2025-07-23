@@ -6,13 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	remapi "github.com/localzet/aura-sdk-go/api"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	remapi "github.com/localzet/aura-sdk-go/api"
 )
 
 type Client struct {
@@ -140,9 +141,8 @@ func (r *Client) createUser(ctx context.Context, customerId int64, telegramId in
 		if config.InboundUUIDs() != nil && len(config.InboundUUIDs()) > 0 {
 			if _, isExist := config.InboundUUIDs()[inbound.UUID]; !isExist {
 				continue
-			} else {
-				inboundsId = append(inboundsId, inbound.UUID)
 			}
+			inboundsId = append(inboundsId, inbound.UUID)
 		} else {
 			inboundsId = append(inboundsId, inbound.UUID)
 		}
