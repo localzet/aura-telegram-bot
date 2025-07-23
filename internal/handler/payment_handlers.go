@@ -49,7 +49,7 @@ func (h Handler) BuyCallbackHandler(ctx context.Context, b *bot.Bot, update *mod
 			CallbackData: fmt.Sprintf("%s?month=%d&amount=%d", CallbackSell, 12, config.Price12()),
 		})
 	}
-	keyboard := [][]models.InlineKeyboardButton{}
+	var keyboard [][]models.InlineKeyboardButton
 
 	if len(priceButtons) == 4 {
 		keyboard = append(keyboard, priceButtons[:2])

@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"time"
 )
 
 type InvoiceType string
@@ -96,7 +97,8 @@ func (cr *PurchaseRepository) FindByInvoiceTypeAndStatus(ctx context.Context, in
 	}
 	defer rows.Close()
 
-	purchases := []Purchase{}
+	var purchases []Purchase
+
 	for rows.Next() {
 		purchase := Purchase{}
 		err = rows.Scan(
