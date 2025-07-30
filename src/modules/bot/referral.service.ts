@@ -8,6 +8,7 @@ import {ResponseTimeInterceptor} from "@common/interceptors";
 import {GrammyExceptionFilter} from "@common/filters";
 import {PrismaService} from "@common/services/prisma.service";
 import {prettyLevel} from "@common/utils";
+import {User} from "@prisma/client";
 
 const log = debug('bot:referral')
 
