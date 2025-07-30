@@ -20,74 +20,88 @@ export class BotService {
         private readonly bot: Bot<Context>,
         private prisma: PrismaService,
     ) {
-        log(`Initializing`, bot.isInited() ? bot.botInfo.first_name : '(pending)')
+        log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)')
     }
 
     @Start()
     @ChatType('private')
     async onStart(@Ctx() ctx: Context): Promise<any> {
         const msg = ctx.message;
-        if (!msg) return;
+        if (!msg) {
+            log('onStart: no message in context');
+            return;
+        }
 
         const telegramId = msg.chat.id;
-        if (!telegramId) return;
+        if (!telegramId) {
+            log('onStart: no telegramId');
+            return;
+        }
 
-        const language = msg?.from?.language_code ?? 'ru'
-        const username = msg?.chat.username
-        const fullName = [msg?.chat.first_name, msg?.chat.last_name].filter(Boolean).join(' ')
+        const language = msg?.from?.language_code ?? 'ru';
+        const username = msg?.chat.username;
+        const fullName = [msg?.chat.first_name, msg?.chat.last_name].filter(Boolean).join(' ');
 
         const text = msg.text ?? '';
-        const [, payload] = text.startsWith('/start') || text.startsWith('start')
-            ? text.split(' ') : [undefined, text];
+        const [, payload] = (text.startsWith('/start') || text.startsWith('start')) ? text.split(' ') : [undefined, text];
 
-        let user = await this.prisma.user.findUnique({where: {telegramId}})
+        log(`onStart: telegramId=${telegramId}, payload=${payload}`);
+
+        let user = await this.prisma.user.findUnique({where: {telegramId}});
 
         if (!user) {
-            // Если есть payload в виде ref_telegramId, пробуем зарегистрировать приглашение
             if (payload && payload.startsWith('ref_')) {
                 const inviterTelegramId = Number(payload.split('_')[1]);
                 if (!isNaN(inviterTelegramId) && inviterTelegramId !== telegramId) {
-                    // Создаем пользователя
+                    log(`onStart: Registering new user with inviter ${inviterTelegramId}`);
+
                     user = await this.prisma.user.create({
                         data: {telegramId, username, fullName, language}
                     });
 
-                    // Находим пригласителя
                     const inviter = await this.prisma.user.findUnique({where: {telegramId: inviterTelegramId}});
                     if (inviter) {
-                        // Создаем запись приглашения
                         await this.prisma.referral.create({
                             data: {
                                 inviterId: inviter.id,
                                 invitedId: user.id,
                             }
                         });
+                        log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
+
                         await this.bot.api.sendMessage(
                             inviter.telegramId,
                             `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
                             {parse_mode: 'HTML'}
                         );
+                        log(`Notification sent to inviter ${inviter.telegramId}`);
+                    } else {
+                        log(`Inviter not found: telegramId=${inviterTelegramId}`);
                     }
+                } else {
+                    log(`Invalid inviterTelegramId: ${inviterTelegramId}`);
                 }
             }
-            // Если пользователь не создан после попытки приглашения, создаем просто нового
             if (!user) {
                 user = await this.prisma.user.create({
                     data: {telegramId, username, fullName, language}
                 });
+                log(`Created new user without inviter: telegramId=${telegramId}`);
             }
         } else {
             await this.prisma.user.update({
                 where: {telegramId},
                 data: {username, fullName, language},
-            })
+            });
+            log(`Updated user info: telegramId=${telegramId}`);
         }
-        user = await this.prisma.user.findUniqueOrThrow({where: {id: user.id}})
+
+        user = await this.prisma.user.findUniqueOrThrow({where: {id: user.id}});
 
         await ctx.reply(`👋 Добро пожаловать, ${user.fullName || 'пользователь'}!
 
 🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
-🎁 Ваша скидка:<code> ${user.level == 'platinum' ? '100' : user.discount}%</code>
+🎁 Ваша скидка:<code> ${user.level === 'platinum' ? '100' : user.discount}%</code>
 ⏳ Подписка:<code> ${user.expireAt ? (formatExpire(user.expireAt)) : 'не активна'}</code>
 
 Выберите действие:`, {
@@ -97,10 +111,11 @@ export class BotService {
                 .text('✨ Подключиться', 'con')
                 .row()
                 .text('👥 Пригласить друга', 'ref')
-        })
+        });
+
+        log(`onStart: greeting sent to ${telegramId}`);
     }
-
-
+    
     // @Help()
     // async onHelp(@Ctx() ctx: Context): Promise<any> {
     //     return ctx.reply('Send me any text')
