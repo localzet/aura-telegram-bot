@@ -115,7 +115,7 @@ export class BotService {
 
         log(`onStart: greeting sent to ${telegramId}`);
     }
-    
+
     // @Help()
     // async onHelp(@Ctx() ctx: Context): Promise<any> {
     //     return ctx.reply('Send me any text')
