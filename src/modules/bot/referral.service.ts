@@ -8,7 +8,6 @@ import {ResponseTimeInterceptor} from "@common/interceptors";
 import {GrammyExceptionFilter} from "@common/filters";
 import {PrismaService} from "@common/services/prisma.service";
 import {prettyLevel} from "@common/utils";
-import {User} from "@prisma/client";
 
 const log = debug('bot:referral')
 
@@ -21,15 +20,22 @@ export class ReferralService {
         private readonly bot: Bot<Context>,
         private prisma: PrismaService
     ) {
+        log('ReferralService initialized');
     }
 
     @CallbackQuery('ref')
     async onRef(@Ctx() ctx: Context): Promise<any> {
-        const telegramId = ctx.from?.id
-        if (!telegramId) return
+        const telegramId = ctx.from?.id;
+        if (!telegramId) {
+            log('onRef: no telegramId');
+            return;
+        }
 
-        const user = await this.prisma.user.findUnique({where: {telegramId}})
-        if (!user) return
+        const user = await this.prisma.user.findUnique({where: {telegramId}});
+        if (!user) {
+            log(`onRef: user not found: telegramId=${telegramId}`);
+            return;
+        }
 
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
@@ -44,7 +50,6 @@ export class ReferralService {
 
         const monthlyReferralDiscount = Math.min(referredCountThisMonth * 5, 25);
 
-        // Персональная скидка
         let totalDiscount = user.discount ?? 0;
         let note = '';
 
@@ -53,7 +58,6 @@ export class ReferralService {
                 totalDiscount = Math.min(totalDiscount + monthlyReferralDiscount, 25);
                 break;
             case 'argentum':
-                // серебряный — всегда 25% несгораемых сверху
                 totalDiscount = Math.min(totalDiscount + 25 + monthlyReferralDiscount, 50);
                 break;
             case 'aurum':
@@ -66,16 +70,16 @@ export class ReferralService {
                 break;
         }
 
-        const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${telegramId}`
+        const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${telegramId}`;
 
         const kb = new InlineKeyboard()
-            .text('📈 Мои приглашённые', 'my_refs')
+            .text('📈 Мои приглашённые', 'my_refs');
 
         if (['aurum', 'platinum'].includes(user.level)) {
             kb.text('🧭 Управление доступом', 'ref_manage');
         }
 
-        await ctx.answerCallbackQuery()
+        await ctx.answerCallbackQuery();
         await ctx.editMessageText(`👥 Пригласите друзей и получите бонус:
 
 🔗 Ваша ссылка: <code>${refLink}</code>
@@ -87,16 +91,24 @@ export class ReferralService {
 `, {
             reply_markup: kb,
             parse_mode: 'HTML'
-        })
+        });
+
+        log(`onRef: user ${telegramId} viewed referral info`);
     }
 
     @CallbackQuery('my_refs')
     async onMyRefs(@Ctx() ctx: Context): Promise<any> {
-        const telegramId = ctx.from?.id
-        if (!telegramId) return
+        const telegramId = ctx.from?.id;
+        if (!telegramId) {
+            log('onMyRefs: no telegramId');
+            return;
+        }
 
         const user = await this.prisma.user.findUnique({where: {telegramId}});
-        if (!user) return;
+        if (!user) {
+            log(`onMyRefs: user not found: telegramId=${telegramId}`);
+            return;
+        }
 
         const referrals = await this.prisma.referral.findMany({
             where: {inviterId: user.id},
@@ -106,7 +118,9 @@ export class ReferralService {
         });
 
         if (!referrals.length) {
-            return ctx.answerCallbackQuery('У вас нет приглашённых пользователей.');
+            await ctx.answerCallbackQuery('У вас нет приглашённых пользователей.');
+            log(`onMyRefs: user ${telegramId} has no referrals`);
+            return;
         }
 
         let text = `📋 Ваши приглашённые:\n\n`;
@@ -117,16 +131,22 @@ export class ReferralService {
 
         await ctx.answerCallbackQuery();
         await ctx.editMessageText(text);
+        log(`onMyRefs: listed referrals for user ${telegramId}`);
     }
 
     @CallbackQuery('ref_manage')
     async onRefManage(@Ctx() ctx: Context): Promise<any> {
         const telegramId = ctx.from?.id;
-        if (!telegramId) return;
+        if (!telegramId) {
+            log('onRefManage: no telegramId');
+            return;
+        }
 
         const user = await this.prisma.user.findUnique({where: {telegramId}});
         if (!user || !['aurum', 'platinum'].includes(user.level)) {
-            return ctx.answerCallbackQuery({text: 'Недоступно для вашего уровня'});
+            await ctx.answerCallbackQuery({text: 'Недоступно для вашего уровня'});
+            log(`onRefManage: access denied for user ${telegramId}`);
+            return;
         }
 
         const referrals = await this.prisma.referral.findMany({
@@ -139,7 +159,9 @@ export class ReferralService {
         const promotable = referrals.filter(r => r.invited.level === 'ferrum');
 
         if (!promotable.length) {
-            return ctx.editMessageText(`📭 Нет рефералов для повышения.`);
+            await ctx.editMessageText(`📭 Нет рефералов для повышения.`);
+            log(`onRefManage: no promotable referrals for user ${telegramId}`);
+            return;
         }
 
         const kb = new InlineKeyboard();
@@ -171,6 +193,7 @@ ${limits}
 `,
             {reply_markup: kb},
         );
+        log(`onRefManage: management panel shown for user ${telegramId}`);
     }
 
     @CallbackQuery(/^promote_(\d+)$/)
@@ -181,6 +204,8 @@ ${limits}
         const match = ctx.callbackQuery?.data?.match(/^promote_(\d+)$/);
         const targetTelegramId = match?.[1] ? Number(match[1]) : null;
         if (!targetTelegramId) return;
+
+        log(`@promote — inviter: ${inviterTelegramId}, target: ${targetTelegramId}`);
 
         const [inviter, target] = await this.prisma.$transaction([
             this.prisma.user.findUnique({where: {telegramId: inviterTelegramId}}),
@@ -246,8 +271,10 @@ ${limits}
         const inviterTelegramId = ctx.from?.id;
         if (!inviterTelegramId) return;
 
-        const [, rawTargetId, newLevel] = ctx.callbackQuery?.data?.split('_') || [undefined, undefined, undefined];
+        const [, rawTargetId, newLevel] = ctx.callbackQuery?.data?.split('_') || [];
         const targetTelegramId = Number(rawTargetId);
+
+        log(`@grantLevel — inviter: ${inviterTelegramId}, target: ${targetTelegramId}, level: ${newLevel}`);
 
         const [inviter, target] = await this.prisma.$transaction([
             this.prisma.user.findUnique({where: {telegramId: inviterTelegramId}}),
@@ -287,12 +314,12 @@ ${limits}
         targetLevel: 'ferrum' | 'argentum' | 'aurum'
     ): Promise<any> {
         const previousLevel = target.level;
+        const validLevels = ['ferrum', 'argentum', 'aurum', 'platinum'] as const;
 
         if (previousLevel === targetLevel) {
             return ctx.answerCallbackQuery({text: 'Пользователь уже на этом уровне', show_alert: true});
         }
 
-        const validLevels = ['ferrum', 'argentum', 'aurum', 'platinum'] as const;
         if (!validLevels.includes(targetLevel)) {
             return ctx.answerCallbackQuery({text: 'Недопустимый уровень', show_alert: true});
         }
@@ -300,29 +327,18 @@ ${limits}
         const isPromote = validLevels.indexOf(targetLevel) > validLevels.indexOf(previousLevel);
         const isDemote = !isPromote;
 
-        const levelField =
-            targetLevel === 'aurum'
-                ? 'grantedAurum'
-                : targetLevel === 'argentum'
-                    ? 'grantedArgentum'
-                    : null;
+        const levelField = targetLevel === 'aurum' ? 'grantedAurum'
+            : targetLevel === 'argentum' ? 'grantedArgentum'
+                : null;
 
-        const previousField =
-            previousLevel === 'aurum'
-                ? 'grantedAurum'
-                : previousLevel === 'argentum'
-                    ? 'grantedArgentum'
-                    : null;
+        const previousField = previousLevel === 'aurum' ? 'grantedAurum'
+            : previousLevel === 'argentum' ? 'grantedArgentum'
+                : null;
 
-        if (
-            isPromote &&
-            ['aurum', 'platinum'].includes(inviter.level) &&
-            levelField !== null
-        ) {
-            const limits: Record<'grantedArgentum' | 'grantedAurum', number> = {
-                grantedArgentum: 10,
-                grantedAurum: 5,
-            };
+        const updates: any[] = [];
+
+        if (isPromote && levelField) {
+            const limits = {grantedAurum: 5, grantedArgentum: 10};
             const granted = inviter[levelField] ?? 0;
             const limit = limits[levelField];
             if (granted >= limit) {
@@ -331,59 +347,27 @@ ${limits}
                     show_alert: true,
                 });
             }
+            updates.push(this.prisma.user.update({
+                where: {id: inviter.id},
+                data: {[levelField]: {increment: 1}},
+            }));
         }
 
-        const transitionValid =
-            validLevels.includes(previousLevel as any) &&
-            validLevels.includes(targetLevel);
-
-        if (!transitionValid) {
-            return ctx.answerCallbackQuery({
-                text: 'Уровень недоступен для изменения',
-                show_alert: true,
-            });
+        if (isDemote && previousField) {
+            updates.push(this.prisma.user.update({
+                where: {id: inviter.id},
+                data: {[previousField]: {decrement: 1}},
+            }));
         }
 
-        const updates: any[] = [];
-
-        if (
-            isDemote &&
-            ['aurum', 'argentum'].includes(previousLevel) &&
-            ['aurum', 'platinum'].includes(inviter.level)
-        ) {
-            if (previousField) {
-                updates.push(
-                    this.prisma.user.update({
-                        where: {id: inviter.id},
-                        data: {[previousField]: {decrement: 1}},
-                    })
-                );
-            }
-        }
-
-        if (
-            isPromote &&
-            ['aurum', 'argentum'].includes(targetLevel) &&
-            ['aurum', 'platinum'].includes(inviter.level)
-        ) {
-            if (levelField) {
-                updates.push(
-                    this.prisma.user.update({
-                        where: {id: inviter.id},
-                        data: {[levelField]: {increment: 1}},
-                    })
-                );
-            }
-        }
-
-        updates.push(
-            this.prisma.user.update({
-                where: {id: target.id},
-                data: {level: targetLevel},
-            })
-        );
+        updates.push(this.prisma.user.update({
+            where: {id: target.id},
+            data: {level: targetLevel},
+        }));
 
         await this.prisma.$transaction(updates);
+
+        log(`@changeUserLevel — ${target.telegramId} ${previousLevel} → ${targetLevel}`);
 
         await this.bot.api.sendMessage(
             target.telegramId,
