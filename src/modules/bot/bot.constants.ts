@@ -1,0 +1,1 @@
+export const BotName = 'aura_connect_bot'

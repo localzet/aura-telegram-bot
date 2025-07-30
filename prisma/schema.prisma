@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserLevel {
+  ferrum
+  argentum
+  aurum
+  platinum
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model User {
+  id         String    @id @default(uuid())
+  telegramId Int       @unique
+  level      UserLevel @default(ferrum)
+
+  username String?
+  fullName String?
+  language String
+
+  referrals   Referral[] @relation("InviterReferrals")
+  invitedBy   Referral?  @relation("InvitedReferral")
+  invitedById String?    @unique
+
+  discount          Int       @default(0)
+  discountExpiresAt DateTime?
+
+  grantedArgentum Int @default(0)
+  grantedAurum    Int @default(0)
+  grantedPlatinum Int @default(0)
+
+  Purchase Purchase[]
+
+  subscription String?
+  expireAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Referral {
+  id String @id @default(uuid())
+
+  inviter   User   @relation("InviterReferrals", fields: [inviterId], references: [id])
+  inviterId String
+
+  invited   User   @relation("InvitedReferral", fields: [invitedId], references: [id])
+  invitedId String @unique
+
+  createdAt DateTime @default(now())
+
+  @@unique([inviterId, invitedId])
+}
+
+enum PurchaseType {
+  crypto
+  yookasa
+  telegram
+}
+
+enum PurchaseStatus {
+  new
+  pending
+  paid
+  cancel
+}
+
+model Purchase {
+  id         String         @id @default(uuid())
+  amount     Float
+  userId     String
+  type       PurchaseType
+  status     PurchaseStatus
+  month      Int
+  yookasaURL String?
+  yookasaId  String?
+
+  currency String
+
+  paidAt    DateTime?
+  expireAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  customer User @relation(fields: [userId], references: [id])
+}

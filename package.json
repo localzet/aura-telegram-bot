@@ -1,0 +1,52 @@
+{
+  "name": "@localzet/aura-telegram-bot",
+  "type": "commonjs",
+  "version": "1.0.0",
+  "public": true,
+  "license": "AGPL-3.0-only",
+  "description": "Telegram bot for Aura",
+  "author": "Ivan Zorin <creator@localzet.com>",
+  "homepage": "https://github.com/localzet/aura-telegram-bot",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/localzet/aura-telegram-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/localzet/aura-telegram-bot/issues"
+  },
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "generate": "prisma generate",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "NODE_ENV=production NODE_NO_WARNINGS=1 node dist/main"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@localzet/aura-contract": "^1.0.0",
+    "@localzet/grammy-nestjs": "^1.0.0",
+    "@nestjs/common": "^11.1.3",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.3",
+    "@nestjs/platform-fastify": "^11.1.3",
+    "@prisma/client": "6.12.0",
+    "axios": "^1.10.0",
+    "debug": "^4.4.1",
+    "dotenv": "^17.0.1",
+    "fastify": "^5.4.0",
+    "grammy": "^1.37.0",
+    "nestjs-zod": "^4.3.1",
+    "pkg-types": "^2.2.0",
+    "table": "^6.9.0",
+    "winston": "^3.17.0",
+    "zod": "^3.25.74"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/node": "^24.0.10",
+    "prisma": "^6.12.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
