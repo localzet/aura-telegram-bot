@@ -157,17 +157,9 @@ export class ReferralService {
             take: 20,
         });
 
-        const promotable = referrals.filter(r => r.invited.level === 'ferrum');
-
-        if (!promotable.length) {
-            await ctx.editMessageText(`📭 Нет рефералов для повышения.`);
-            log(`onRefManage: no promotable referrals for user ${telegramId}`);
-            return;
-        }
-
         const kb = new InlineKeyboard();
 
-        for (const ref of promotable) {
+        for (const ref of referrals) {
             const invited = ref.invited;
             kb.text(`🎓 ${invited.fullName || invited.username || invited.telegramId}`, `promote_${invited.telegramId}`).row();
         }
@@ -177,9 +169,9 @@ export class ReferralService {
 
         let limits = '';
         if (user.level === 'platinum') {
-            limits = `🥇 Осталось повышений (Золотые): ${remainingAurum} / 5\n🥈 Осталось (Серебряные): ${remainingArgentum} / 10`;
+            limits = `🥇 Золотые: ${remainingAurum} / 5\n🥈 Серебряные: ${remainingArgentum} / 10`;
         } else {
-            limits = `🥈 Осталось повышений (Серебряные): ${remainingArgentum} / 10`;
+            limits = `🥈 Серебряные: ${remainingArgentum} / 10`;
         }
 
         await ctx.answerCallbackQuery();
@@ -352,9 +344,31 @@ ${limits}
                 where: {id: inviter.id},
                 data: {[levelField]: {increment: 1}},
             }));
+
+            if (previousField) {
+                updates.push(this.prisma.user.update({
+                    where: {id: inviter.id},
+                    data: {[previousField]: {decrement: 1}},
+                }));
+            }
         }
 
         if (isDemote && previousField) {
+            if (levelField) {
+                const limits = {grantedAurum: 5, grantedArgentum: 10};
+                const granted = inviter[levelField] ?? 0;
+                const limit = limits[levelField];
+                if (granted >= limit) {
+                    return ctx.answerCallbackQuery({
+                        text: `Вы достигли лимита (${limit}) по ${prettyLevel(targetLevel)}`,
+                        show_alert: true,
+                    });
+                }
+                updates.push(this.prisma.user.update({
+                    where: {id: inviter.id},
+                    data: {[levelField]: {increment: 1}},
+                }));
+            }
             updates.push(this.prisma.user.update({
                 where: {id: inviter.id},
                 data: {[previousField]: {decrement: 1}},
