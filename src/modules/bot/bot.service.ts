@@ -8,6 +8,7 @@ import {ResponseTimeInterceptor} from "@common/interceptors";
 import {GrammyExceptionFilter} from "@common/filters";
 import {PrismaService} from "@common/services/prisma.service";
 import {formatExpire, prettyLevel} from "@common/utils";
+import {UserService} from "@common/services/user.service";
 
 const log = debug('bot:main')
 
@@ -19,6 +20,7 @@ export class BotService {
         @InjectBot(BotName)
         private readonly bot: Bot<Context>,
         private prisma: PrismaService,
+        private user: UserService,
     ) {
         log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)')
     }
@@ -38,82 +40,65 @@ export class BotService {
             return;
         }
 
-        const language = msg?.from?.language_code ?? 'ru';
-        const username = msg?.chat.username;
-        const fullName = [msg?.chat.first_name, msg?.chat.last_name].filter(Boolean).join(' ');
-
         const text = msg.text ?? '';
         const [, payload] = (text.startsWith('/start') || text.startsWith('start')) ? text.split(' ') : [undefined, text];
 
         log(`onStart: telegramId=${telegramId}, payload=${payload}`);
 
-        let user = await this.prisma.user.findUnique({where: {telegramId}});
+        const exists = await this.prisma.user.findUnique({where: {telegramId}});
+        let inviter = undefined;
 
-        if (!user) {
+        if (!exists) {
             if (payload && payload.startsWith('ref_')) {
                 const inviterTelegramId = Number(payload.split('_')[1]);
                 if (!isNaN(inviterTelegramId) && inviterTelegramId !== telegramId) {
                     log(`onStart: Registering new user with inviter ${inviterTelegramId}`);
-
-                    user = await this.prisma.user.create({
-                        data: {telegramId, username, fullName, language}
-                    });
-
-                    const inviter = await this.prisma.user.findUnique({where: {telegramId: inviterTelegramId}});
-                    if (inviter) {
-                        await this.prisma.referral.create({
-                            data: {
-                                inviterId: inviter.id,
-                                invitedId: user.id,
-                            }
-                        });
-                        log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
-
-                        await this.bot.api.sendMessage(
-                            inviter.telegramId,
-                            `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
-                            {parse_mode: 'HTML'}
-                        );
-                        log(`Notification sent to inviter ${inviter.telegramId}`);
-                    } else {
-                        log(`Inviter not found: telegramId=${inviterTelegramId}`);
-                    }
-                } else {
-                    log(`Invalid inviterTelegramId: ${inviterTelegramId}`);
+                    inviter = await this.prisma.user.findUnique({where: {telegramId: inviterTelegramId}});
                 }
             }
-            if (!user) {
-                user = await this.prisma.user.create({
-                    data: {telegramId, username, fullName, language}
-                });
-                log(`Created new user without inviter: telegramId=${telegramId}`);
-            }
-        } else {
-            await this.prisma.user.update({
-                where: {telegramId},
-                data: {username, fullName, language},
-            });
-            log(`Updated user info: telegramId=${telegramId}`);
         }
 
-        user = await this.prisma.user.findUniqueOrThrow({where: {id: user.id}});
+        const {tg: user, aura: auraUser} = await this.user.getUser(ctx)
+        if (inviter) {
+            await this.prisma.referral.create({
+                data: {
+                    inviterId: inviter.id,
+                    invitedId: user.id,
+                }
+            });
+            log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
+
+            await this.bot.api.sendMessage(
+                inviter.telegramId,
+                `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
+                {parse_mode: 'HTML'}
+            );
+            log(`Notification sent to inviter ${inviter.telegramId}`);
+        }
+
+        const kb = new InlineKeyboard()
+            .text(`📦 ${user.auraId ? 'Продлить' : 'Купить'}`, 'buy');
+        if (auraUser) {
+            kb.text('✨ Подключиться', 'con')
+        }
+        kb.row().text('👥 Пригласить друга', 'ref')
+
 
         await ctx.reply(`👋 Добро пожаловать, ${user.fullName || 'пользователь'}!
-
-🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
-🎁 Ваша скидка:<code> ${user.level === 'platinum' ? '100' : user.discount}%</code>
-⏳ Подписка:<code> ${user.expireAt ? (formatExpire(user.expireAt)) : 'не активна'}</code>
-
-Выберите действие:`, {
+        
+        🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
+        ⏳ Подписка:<code> ${auraUser && auraUser.expireAt ? (formatExpire(auraUser.expireAt)) : 'не активна'}</code>
+        
+        Выберите действие:`, {
             parse_mode: 'HTML',
-            reply_markup: new InlineKeyboard()
-                .text('📦 Купить', 'buy')
-                .text('✨ Подключиться', 'con')
-                .row()
-                .text('👥 Пригласить друга', 'ref')
+            reply_markup: kb
         });
 
         log(`onStart: greeting sent to ${telegramId}`);
+    }
+
+    async sendMessage(chatId: string | number, text: string, other?: any | undefined) {
+        return this.bot.api.sendMessage(chatId, text, other);
     }
 
     // @Help()

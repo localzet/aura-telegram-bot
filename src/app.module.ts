@@ -8,6 +8,8 @@ import {BotModule} from "@modules/bot/bot.module";
 import {NestjsGrammyModule} from "@localzet/grammy-nestjs";
 import {BotName} from "@modules/bot/bot.constants";
 import {PrismaService} from "@common/services/prisma.service";
+import {UserService} from "@common/services/user.service";
+import {WebhookModule} from "@modules/webhook/webhook.module";
 
 const logger = new Logger('bot:app.module');
 
@@ -24,16 +26,21 @@ const logger = new Logger('bot:app.module');
             token: process.env.TELEGRAM_TOKEN!,
             include: [BotModule],
             pollingOptions: {
-                allowed_updates: ['message', 'callback_query'],
+                allowed_updates: ['message', 'callback_query', 'pre_checkout_query'],
             },
         }),
         AxiosModule,
         BotModule,
+        WebhookModule,
     ],
     providers: [
-        PrismaService
+        PrismaService,
+        UserService,
     ],
-    exports: [PrismaService],
+    exports: [
+        PrismaService,
+        UserService,
+    ],
 })
 export class AppModule {
     constructor() {

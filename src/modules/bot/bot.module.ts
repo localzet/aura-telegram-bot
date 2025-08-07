@@ -7,13 +7,14 @@ import {BotService} from "@modules/bot/bot.service";
 import {ResponseTime} from "@common/middleware";
 import {ReferralService} from "@modules/bot/referral.service";
 import {BuyService} from "@modules/bot/buy.service";
+import {ConnectionService} from "@modules/bot/connection.service";
 
 const log = debug('bot:bot.module')
 
 @Module({
     controllers: [],
-    providers: [BotService, ReferralService, BuyService],
-    imports: [],
+    providers: [BotService, ReferralService, BuyService, ConnectionService],
+    exports: [BotService],
 })
 export class BotModule {
     constructor(@InjectBot(BotName) private readonly bot: Bot<Context>) {

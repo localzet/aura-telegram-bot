@@ -18,6 +18,7 @@ datasource db {
 model User {
   id         String    @id @default(uuid())
   telegramId Int       @unique
+  auraId     String?   @unique
   level      UserLevel @default(ferrum)
 
   username String?
@@ -35,13 +36,10 @@ model User {
   grantedAurum    Int @default(0)
   grantedPlatinum Int @default(0)
 
-  Purchase Purchase[]
-
-  subscription String?
-  expireAt     DateTime?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  purchase Purchase[]
 }
 
 model Referral {
@@ -72,21 +70,20 @@ enum PurchaseStatus {
 }
 
 model Purchase {
-  id         String         @id @default(uuid())
-  amount     Float
-  userId     String
-  type       PurchaseType
-  status     PurchaseStatus
-  month      Int
-  yookasaURL String?
+  id       String         @id @default(uuid())
+  userId   String
+  type     PurchaseType
+  status   PurchaseStatus
+  amount   Float
+  currency String
+  month    Int
+
+  telegramId String?
   yookasaId  String?
 
-  currency String
-
   paidAt    DateTime?
-  expireAt  DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  customer User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
