@@ -13,11 +13,7 @@ export const configSchema = z
         CADDY_AUTH_API_TOKEN: z.optional(z.string()),
 
         TELEGRAM_TOKEN: z.string(),
-        TELEGRAM_STARS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => val === 'true'),
-        BOT_DOMAIN: z.optional(z.string()),
+        YOOKASSA_TOKEN: z.string(),
         MINI_APP_URL: z.optional(z.string()),
     })
     .superRefine((data, ctx) => {

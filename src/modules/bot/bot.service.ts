@@ -9,6 +9,7 @@ import {GrammyExceptionFilter} from "@common/filters";
 import {PrismaService} from "@common/services/prisma.service";
 import {formatExpire, prettyLevel} from "@common/utils";
 import {UserService} from "@common/services/user.service";
+import {ConfigService} from "@nestjs/config";
 
 const log = debug('bot:main')
 
@@ -21,6 +22,7 @@ export class BotService {
         private readonly bot: Bot<Context>,
         private prisma: PrismaService,
         private user: UserService,
+        private config: ConfigService,
     ) {
         log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)')
     }
@@ -79,7 +81,7 @@ export class BotService {
         const kb = new InlineKeyboard()
             .text(`📦 ${user.auraId ? 'Продлить' : 'Купить'}`, 'buy');
         if (auraUser) {
-            kb.text('✨ Подключиться', 'con')
+            kb.webApp('✨ Подключиться', this.config.getOrThrow('MINI_APP_URL') + `/${auraUser.shortUuid}`);
         }
         kb.row().text('👥 Пригласить друга', 'ref')
 
