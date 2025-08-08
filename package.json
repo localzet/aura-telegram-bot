@@ -44,6 +44,7 @@
     "zod": "^3.25.74"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
     "@types/debug": "^4.1.12",
     "@types/node": "^24.0.10",
     "prisma": "^6.12.0",
