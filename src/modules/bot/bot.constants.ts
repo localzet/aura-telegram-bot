@@ -1,1 +1,1 @@
-export const BotName = 'aura_connect_bot'
+export const BotName = "aura_connect_bot";
