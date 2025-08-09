@@ -10,7 +10,7 @@ export class AdminGuard implements CanActivate {
         const ctx = GrammyExecutionContext.create(context)
         const { from } = ctx.getContext<Context>()
 
-        // @ts-ignore
+        // @ts-expect-error
         const isAdmin = this.ADMIN_IDS.includes(from?.id)
         if (!isAdmin) {
             throw new GrammyException('You are not admin 😡')
