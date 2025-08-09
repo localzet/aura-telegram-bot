@@ -1,39 +1,42 @@
-import {Injectable} from "@nestjs/common";
+import {Injectable, Logger} from "@nestjs/common";
 import {AxiosService} from "@common/axios";
 import {PrismaService} from "@common/services/prisma.service";
 import {Context} from "grammy";
-import debug from "debug";
 import {User} from "@prisma/client";
-import {RuntimeException} from "@nestjs/core/errors/exceptions";
 import {ConfigService} from "@nestjs/config";
 import {z} from "zod";
 import {UsersSchema} from "@remnawave/backend-contract";
 
-const log = debug('aura:user')
-
 @Injectable()
 export class UserService {
+    private readonly logger = new Logger(UserService.name);
+
     constructor(
-        private config: ConfigService,
-        private prisma: PrismaService,
-        private axios: AxiosService,
+        private readonly config: ConfigService,
+        private readonly prisma: PrismaService,
+        private readonly axios: AxiosService,
     ) {
     }
 
-    async getTgUser(ctx: Context): Promise<User> {
+    private extractTgData(ctx: Context) {
         const msg = ctx.message ?? ctx.callbackQuery?.message;
-        if (!msg) {
-            throw new RuntimeException('no message in context');
+        if (!msg?.chat?.id) {
+            this.logger.warn("Не удалось извлечь telegramId из контекста");
+            return null;
         }
+        return {
+            telegramId: msg.chat.id,
+            username: msg.chat.username,
+            fullName: [msg.chat.first_name, msg.chat.last_name].filter(Boolean).join(" "),
+            language: msg.from?.language_code ?? "ru",
+        };
+    }
 
-        const telegramId = msg.chat.id;
-        if (!telegramId) {
-            throw new RuntimeException('no telegramId');
-        }
+    async getTgUser(ctx: Context): Promise<User> {
+        const data = this.extractTgData(ctx);
+        if (!data) throw new Error("no telegramId");
 
-        const language = msg?.from?.language_code ?? 'ru';
-        const username = msg?.chat.username;
-        const fullName = [msg?.chat.first_name, msg?.chat.last_name].filter(Boolean).join(' ');
+        const {telegramId, username, fullName, language} = data;
 
         return this.prisma.user.upsert({
             where: {telegramId},
@@ -43,104 +46,109 @@ export class UserService {
     }
 
     async getAuraUser(ctx: Context): Promise<z.infer<typeof UsersSchema> | undefined> {
-        const user = await this.updateAuraUser(ctx);
-        if (user) return user;
+        try {
+            const user = await this.updateAuraUser(ctx);
+            if (user) return user;
 
-        const msg = ctx.message ?? ctx.callbackQuery?.message;
-        if (!msg) {
-            throw new RuntimeException('no message in context');
+            const data = this.extractTgData(ctx);
+            if (!data) return undefined;
+
+            const users = await this.axios.getUsersByTelegramId(data.telegramId);
+            if (!users.isOk || !users.response) {
+                this.logger.warn(`Aura-пользователь по Telegram ID ${data.telegramId} не найден`);
+                return undefined;
+            }
+
+            const auraId = users.response.response[0]?.uuid;
+            if (!auraId) {
+                this.logger.warn(`Не удалось извлечь auraId для Telegram ID ${data.telegramId}`);
+                return undefined;
+            }
+
+            await this.prisma.user.upsert({
+                where: {telegramId: data.telegramId},
+                create: {...data, auraId},
+                update: {...data, auraId},
+            });
+
+            return await this.updateAuraUser(ctx);
+        } catch (err) {
+            this.logger.error("Ошибка при получении Aura-пользователя", err instanceof Error ? err.stack : err);
+            return undefined;
         }
-
-        const telegramId = msg.chat.id;
-        if (!telegramId) {
-            throw new RuntimeException('no telegramId');
-        }
-
-        const users = await this.axios.getUsersByTelegramId(telegramId)
-        if (!users.isOk || !users.response) return undefined;
-
-        const auraId = users.response?.response[0].uuid;
-
-        const language = msg?.from?.language_code ?? 'ru';
-        const username = msg?.chat.username;
-        const fullName = [msg?.chat.first_name, msg?.chat.last_name].filter(Boolean).join(' ');
-
-        await this.prisma.user.upsert({
-            where: {telegramId},
-            create: {telegramId, username, fullName, language, auraId},
-            update: {username, fullName, language, auraId},
-        });
-
-        return await this.updateAuraUser(ctx);
     }
 
-    async getUser(ctx: Context): Promise<{
-        tg: User,
-        aura: z.infer<typeof UsersSchema> | undefined
-    }> {
+    async getUser(ctx: Context) {
         return {
             tg: await this.getTgUser(ctx),
             aura: await this.getAuraUser(ctx),
         };
     }
 
-    async createAuraUser(ctx: Context, expireAt: Date): Promise<z.infer<typeof UsersSchema> | undefined> {
-        const tg_user = await this.getTgUser(ctx);
+    async createAuraUser(ctx: Context, expireAt: Date) {
+        try {
+            const tgUser = await this.getTgUser(ctx);
 
-        const activeInternalSquads = (this.config.get<string>('AURA_DEFAULT_SQUADS') ?? '')
-            .split(',')
-            .map(id => id.trim())
-            .filter(Boolean);
+            const activeInternalSquads = (this.config.get<string>("AURA_DEFAULT_SQUADS") ?? "")
+                .split(",")
+                .map(id => id.trim())
+                .filter(Boolean);
 
-        const aura_user = await this.axios.createUser({
-            expireAt: expireAt,
-            username: `tg_${tg_user.telegramId}`,
-            status: "ACTIVE",
-            shortUuid: tg_user.id,
-            description: `${tg_user.fullName} @${tg_user.username} id:${tg_user.telegramId}:${tg_user.id}`,
-            tag: tg_user.level,
-            telegramId: tg_user.telegramId,
-            activeInternalSquads: activeInternalSquads,
-        });
-
-        if (aura_user.isOk && aura_user.response) {
-            await this.prisma.user.update({
-                where: {id: tg_user.id},
-                data: {
-                    auraId: aura_user.response.response.uuid,
-                }
+            const auraUser = await this.axios.createUser({
+                expireAt,
+                username: `tg_${tgUser.telegramId}`,
+                status: "ACTIVE",
+                shortUuid: tgUser.id,
+                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId}:${tgUser.id}`,
+                tag: tgUser.level,
+                telegramId: tgUser.telegramId,
+                activeInternalSquads,
             });
 
-            return aura_user.response.response;
-        } else {
+            if (auraUser.isOk && auraUser.response) {
+                await this.prisma.user.update({
+                    where: {id: tgUser.id},
+                    data: {auraId: auraUser.response.response.uuid},
+                });
+                return auraUser.response.response;
+            }
+
+            this.logger.warn(`Не удалось создать Aura-пользователя для Telegram ID ${tgUser.telegramId}`);
+            return undefined;
+        } catch (err) {
+            this.logger.error("Ошибка при создании Aura-пользователя", err instanceof Error ? err.stack : err);
             return undefined;
         }
     }
 
-    async updateAuraUser(ctx: Context, expireAt: Date | undefined = undefined): Promise<z.infer<typeof UsersSchema> | undefined> {
-        const tg_user = await this.getTgUser(ctx);
-        if (!tg_user.auraId) {
-            return undefined;
-        }
+    async updateAuraUser(ctx: Context, expireAt?: Date) {
+        try {
+            const tgUser = await this.getTgUser(ctx);
+            if (!tgUser.auraId) return undefined;
 
-        const activeInternalSquads = (this.config.get<string>('AURA_DEFAULT_SQUADS') ?? '')
-            .split(',')
-            .map(id => id.trim())
-            .filter(Boolean);
+            const activeInternalSquads = (this.config.get<string>("AURA_DEFAULT_SQUADS") ?? "")
+                .split(",")
+                .map(id => id.trim())
+                .filter(Boolean);
 
-        const aura_user = await this.axios.getUserByUuid(tg_user.auraId);
+            const auraUser = await this.axios.getUserByUuid(tgUser.auraId);
+            if (!auraUser.isOk || !auraUser.response) {
+                this.logger.warn(`Aura-пользователь с ID ${tgUser.auraId} не найден`);
+                return undefined;
+            }
 
-        if (aura_user.isOk && aura_user.response) {
             const updated = await this.axios.updateUser({
-                expireAt: expireAt,
-                uuid: aura_user.response.response.uuid,
-                description: `${tg_user.fullName} @${tg_user.username} id:${tg_user.telegramId}:${tg_user.id}`,
-                tag: tg_user.level,
-                telegramId: tg_user.telegramId,
-                activeInternalSquads: activeInternalSquads,
-            })
+                expireAt,
+                uuid: auraUser.response.response.uuid,
+                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId}:${tgUser.id}`,
+                tag: tgUser.level,
+                telegramId: tgUser.telegramId,
+                activeInternalSquads,
+            });
+
             return updated?.response?.response;
-        } else {
+        } catch (err) {
+            this.logger.error("Ошибка при обновлении Aura-пользователя", err instanceof Error ? err.stack : err);
             return undefined;
         }
     }

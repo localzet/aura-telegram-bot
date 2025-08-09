@@ -1,8 +1,6 @@
 import axios, {AxiosError, AxiosInstance, AxiosResponseHeaders, RawAxiosResponseHeaders,} from 'axios';
-
 import {Injectable, Logger} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
-
 import {
     CreateUserCommand,
     GetSubscriptionInfoByShortUuidCommand,
@@ -11,7 +9,6 @@ import {
     TRequestTemplateTypeKeys,
     UpdateUserCommand,
 } from '@remnawave/backend-contract';
-
 import {ICommandResponse} from '@common/types';
 
 @Injectable()
@@ -32,157 +29,83 @@ export class AxiosService {
         });
 
         const caddyAuthApiToken = this.configService.get('CADDY_AUTH_API_TOKEN');
-
         if (caddyAuthApiToken) {
             this.axiosInstance.defaults.headers.common['X-Api-Key'] = caddyAuthApiToken;
         }
     }
 
-    public async updateUser(data: UpdateUserCommand.Request) {
+    private handleError<T>(
+        error: unknown,
+        commandName: string,
+    ): ICommandResponse<T> {
+        if (error instanceof AxiosError) {
+            const status = error.response?.status;
+            const data = error.response?.data;
+            this.logger.error(
+                `[${commandName}] Axios error: ${error.message} (status: ${status})`,
+                typeof data === 'object' ? JSON.stringify(data) : String(data),
+            );
+        } else {
+            this.logger.error(`[${commandName}] Unexpected error`, error as Error);
+        }
+        return {isOk: false};
+    }
+
+    private async sendRequest<T>(
+        command: { endpointDetails: { REQUEST_METHOD: string }; url: string | ((...args: any[]) => string) },
+        dataOrParams?: any,
+        urlArgs?: any[],
+    ): Promise<ICommandResponse<T>> {
         try {
-            const response = await this.axiosInstance.request<UpdateUserCommand.Response>({
-                method: UpdateUserCommand.endpointDetails.REQUEST_METHOD,
-                url: UpdateUserCommand.url,
-                data
+            const url =
+                typeof command.url === 'function'
+                    ? command.url(...(urlArgs || []))
+                    : command.url;
+
+            const response = await this.axiosInstance.request<T>({
+                method: command.endpointDetails.REQUEST_METHOD,
+                url,
+                data: dataOrParams,
             });
 
-            return {
-                isOk: true,
-                response: response.data,
-            };
+            return {isOk: true, response: response.data};
         } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе CreateUserCommand в Axios:', error.message);
-
-                return {
-                    isOk: false,
-                };
-            } else {
-                this.logger.error('Ошибка при запросе CreateUserCommand:', error);
-
-                return {
-                    isOk: false,
-                };
-            }
+            return this.handleError<T>(error, command.constructor?.name ?? 'UnknownCommand');
         }
     }
 
-    public async createUser(data: CreateUserCommand.Request) {
-        try {
-            const response = await this.axiosInstance.request<CreateUserCommand.Response>({
-                method: CreateUserCommand.endpointDetails.REQUEST_METHOD,
-                url: CreateUserCommand.url,
-                data
-            });
-
-            return {
-                isOk: true,
-                response: response.data,
-            };
-        } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе CreateUserCommand в Axios:', error.message);
-
-                return {
-                    isOk: false,
-                };
-            } else {
-                this.logger.error('Ошибка при запросе CreateUserCommand:', error);
-
-                return {
-                    isOk: false,
-                };
-            }
-        }
+    public updateUser(data: UpdateUserCommand.Request) {
+        return this.sendRequest<UpdateUserCommand.Response>(UpdateUserCommand, data);
     }
 
-    async getUserByUuid(uuid: string) {
-        try {
-            const response = await this.axiosInstance.request<GetUserByUuidCommand.Response>({
-                method: GetUserByUuidCommand.endpointDetails.REQUEST_METHOD,
-                url: GetUserByUuidCommand.url(uuid),
-            });
-
-            return {
-                isOk: true,
-                response: response.data,
-            };
-        } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе CreateUserCommand в Axios:', error.message);
-
-                return {
-                    isOk: false,
-                };
-            } else {
-                this.logger.error('Ошибка при запросе CreateUserCommand:', error);
-
-                return {
-                    isOk: false,
-                };
-            }
-        }
+    public createUser(data: CreateUserCommand.Request) {
+        return this.sendRequest<CreateUserCommand.Response>(CreateUserCommand, data);
     }
 
-    public async getUsersByTelegramId(
-        telegramId: number,
-    ): Promise<ICommandResponse<GetUserByTelegramIdCommand.Response>> {
-        try {
-            const response = await this.axiosInstance.request<GetUserByTelegramIdCommand.Response>({
-                method: GetUserByTelegramIdCommand.endpointDetails.REQUEST_METHOD,
-                url: GetUserByTelegramIdCommand.url(String(telegramId)),
-            });
-
-            return {
-                isOk: true,
-                response: response.data,
-            };
-        } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе GetUserByUsername в Axios:', error.message);
-
-                return {
-                    isOk: false,
-                };
-            } else {
-                this.logger.error('Ошибка при запросе GetUserByUsername:', error);
-
-                return {
-                    isOk: false,
-                };
-            }
-        }
+    public getUserByUuid(uuid: string) {
+        return this.sendRequest<GetUserByUuidCommand.Response>(GetUserByUuidCommand, undefined, [uuid]);
     }
 
-    public async getSubscriptionInfo(
-        shortUuid: string,
-    ): Promise<ICommandResponse<GetSubscriptionInfoByShortUuidCommand.Response>> {
-        try {
-            const response =
-                await this.axiosInstance.request<GetSubscriptionInfoByShortUuidCommand.Response>({
-                    method: GetSubscriptionInfoByShortUuidCommand.endpointDetails.REQUEST_METHOD,
-                    url: GetSubscriptionInfoByShortUuidCommand.url(shortUuid),
-                });
-
-            return {
-                isOk: true,
-                response: response.data,
-            };
-        } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе GetSubscriptionInfo:', error.message);
-            } else {
-                this.logger.error('Ошибка при запросе GetSubscriptionInfo:', error);
-            }
-
-            return {isOk: false};
-        }
+    public getUsersByTelegramId(telegramId: number) {
+        return this.sendRequest<GetUserByTelegramIdCommand.Response>(
+            GetUserByTelegramIdCommand,
+            undefined,
+            [String(telegramId)],
+        );
     }
 
-    public async getSubscription(
+    public getSubscriptionInfo(shortUuid: string) {
+        return this.sendRequest<GetSubscriptionInfoByShortUuidCommand.Response>(
+            GetSubscriptionInfoByShortUuidCommand,
+            undefined,
+            [shortUuid],
+        );
+    }
+
+    async getSubscription(
         shortUuid: string,
         headers: NodeJS.Dict<string | string[]>,
-        withClientType: boolean = false,
+        withClientType = false,
         clientType?: TRequestTemplateTypeKeys,
     ): Promise<{
         response: unknown;
@@ -190,7 +113,6 @@ export class AxiosService {
     } | null> {
         try {
             let basePath = 'api/sub/' + shortUuid;
-
             if (withClientType && clientType) {
                 basePath += '/' + clientType;
             }
@@ -201,22 +123,14 @@ export class AxiosService {
                 headers: this.filterHeaders(headers),
             });
 
-            return {
-                response: response.data,
-                headers: response.headers,
-            };
+            return {response: response.data, headers: response.headers};
         } catch (error) {
-            if (error instanceof AxiosError) {
-                this.logger.error('Ошибка при запросе GetSubscription:', error.message);
-            } else {
-                this.logger.error('Ошибка при запросе GetSubscription:', error);
-            }
-
+            this.handleError(error, 'GetSubscription');
             return null;
         }
     }
 
-    private filterHeaders(headers: NodeJS.Dict<string | string[]>): NodeJS.Dict<string | string[]> {
+    private filterHeaders(headers: NodeJS.Dict<string | string[]>) {
         const allowedHeaders = [
             'user-agent',
             'accept',
@@ -228,10 +142,10 @@ export class AxiosService {
             'x-device-model',
         ];
 
-        const filteredHeaders = Object.fromEntries(
-            Object.entries(headers).filter(([key]) => allowedHeaders.includes(key)),
+        return Object.fromEntries(
+            Object.entries(headers).filter(([key]) =>
+                allowedHeaders.includes(key.toLowerCase()),
+            ),
         );
-
-        return filteredHeaders;
     }
 }

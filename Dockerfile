@@ -1,5 +1,7 @@
 FROM node:22-alpine
 
+LABEL org.opencontainers.image.source = "https://github.com/localzet/aura-telegram-bot"
+
 WORKDIR /opt/app
 
 RUN npm install pm2 -g

@@ -1,7 +1,7 @@
-import {ChatType, Ctx, InjectBot, Start, Update,} from '@localzet/grammy-nestjs'
-import {UseFilters, UseInterceptors} from '@nestjs/common'
-import debug from 'debug'
-import {Bot, Context, InlineKeyboard} from 'grammy'
+import {ChatType, Command, Ctx, InjectBot, Start, Update} from '@localzet/grammy-nestjs';
+import {UseFilters, UseGuards, UseInterceptors} from '@nestjs/common';
+import debug from 'debug';
+import {Bot, Context, InlineKeyboard} from 'grammy';
 
 import {BotName} from "@modules/bot/bot.constants";
 import {ResponseTimeInterceptor} from "@common/interceptors";
@@ -10,8 +10,9 @@ import {PrismaService} from "@common/services/prisma.service";
 import {formatExpire, prettyLevel} from "@common/utils";
 import {UserService} from "@common/services/user.service";
 import {ConfigService} from "@nestjs/config";
+import {AdminGuard} from "@common/guards";
 
-const log = debug('bot:main')
+const log = debug('bot:main');
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -24,7 +25,7 @@ export class BotService {
         private user: UserService,
         private config: ConfigService,
     ) {
-        log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)')
+        log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)');
     }
 
     @Start()
@@ -60,7 +61,7 @@ export class BotService {
             }
         }
 
-        const {tg: user, aura: auraUser} = await this.user.getUser(ctx)
+        const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
         if (inviter) {
             await this.prisma.referral.create({
                 data: {
@@ -83,15 +84,14 @@ export class BotService {
         if (auraUser) {
             kb.webApp('✨ Подключиться', this.config.getOrThrow('MINI_APP_URL') + `/${auraUser.shortUuid}`);
         }
-        kb.row().text('👥 Пригласить друга', 'ref')
-
+        kb.row().text('👥 Пригласить друга', 'ref');
 
         await ctx.reply(`👋 Добро пожаловать, ${user.fullName || 'пользователь'}!
         
-        🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
-        ⏳ Подписка:<code> ${auraUser && auraUser.expireAt ? (formatExpire(auraUser.expireAt)) : 'не активна'}</code>
+🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
+⏳ Подписка:<code> ${auraUser && auraUser.expireAt ? (formatExpire(auraUser.expireAt)) : 'не активна'}</code>
         
-        Выберите действие:`, {
+Выберите действие:`, {
             parse_mode: 'HTML',
             reply_markup: kb
         });
@@ -103,14 +103,52 @@ export class BotService {
         return this.bot.api.sendMessage(chatId, text, other);
     }
 
-    // @Help()
-    // async onHelp(@Ctx() ctx: Context): Promise<any> {
-    //     return ctx.reply('Send me any text')
-    // }
+    @Command('help')
+    @ChatType('private')
+    async onHelp(@Ctx() ctx: Context): Promise<any> {
+        const msg = ctx.message?.text ?? '';
+        const args = msg.split(' ').slice(1).join(' ').trim();
 
-    // @Admin()
-    // @UseGuards(AdminGuard)
-    // async onAdminCommand(@Ctx() ctx: Context): Promise<any> {
-    //     return ctx.reply('Welcome, Judge')
-    // }
+        if (!args) {
+            return ctx.reply(
+                '📖 Вы можете написать разработчикам через команду:\n' +
+                '<code>/help ваш_текст</code>\n\n' +
+                'Пример:\n<code>/help Не работает оплата</code>',
+                {parse_mode: 'HTML'}
+            );
+        }
+
+        const helpChatId = this.config.getOrThrow<string>('HELP_CHAT_ID');
+
+        await this.bot.api.sendMessage(
+            helpChatId,
+            `📨 Сообщение от пользователя:\n` +
+            `ID: <code>${ctx.from?.id}</code>\n` +
+            `Имя: ${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}\n` +
+            (ctx.from?.username ? `@${ctx.from.username}\n` : '') +
+            `\n${args}`,
+            {parse_mode: 'HTML'}
+        );
+        return ctx.reply('✅ Ваше сообщение отправлено разработчикам.');
+    }
+
+    @Command('reply')
+    @UseGuards(AdminGuard)
+    async onReply(@Ctx() ctx: Context): Promise<any> {
+        const msg = ctx.message?.text ?? '';
+        const parts = msg.split(' ').slice(1);
+        const userId = Number(parts.shift());
+        const replyText = parts.join(' ').trim();
+
+        if (!userId || !replyText) {
+            return ctx.reply('Использование: /reply <user_id> <текст>');
+        }
+
+        try {
+            await this.bot.api.sendMessage(userId!, replyText);
+            return ctx.reply('✅ Сообщение отправлено пользователю.');
+        } catch (e) {
+            return ctx.reply(`⚠️ Не удалось отправить сообщение: ${e}`);
+        }
+    }
 }
