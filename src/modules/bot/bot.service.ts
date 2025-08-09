@@ -25,7 +25,7 @@ export class BotService {
         private user: UserService,
         private config: ConfigService,
     ) {
-        log(`Initializing bot, status:`, bot.isInited() ? bot.botInfo.first_name : '(pending)');
+        log("Initializing bot, status:", bot.isInited() ? bot.botInfo.first_name : '(pending)');
     }
 
     @Start()
@@ -122,7 +122,7 @@ export class BotService {
 
         await this.bot.api.sendMessage(
             helpChatId,
-            `📨 Сообщение от пользователя:\n` +
+            "📨 Сообщение от пользователя:\n" +
             `ID: <code>${ctx.from?.id}</code>\n` +
             `Имя: ${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}\n` +
             (ctx.from?.username ? `@${ctx.from.username}\n` : '') +

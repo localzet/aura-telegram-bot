@@ -44,6 +44,6 @@ const logger = new Logger('bot:app.module');
 })
 export class AppModule {
     constructor() {
-        logger.debug(`Initializing AppModule`);
+        logger.debug("Initializing AppModule");
     }
 }
