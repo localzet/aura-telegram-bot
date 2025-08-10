@@ -19,18 +19,25 @@ export class UserService {
     }
 
     private extractTgData(ctx: Context) {
-        const msg = ctx.message ?? ctx.callbackQuery?.message;
-        if (!msg?.chat?.id) {
+        const from = ctx.from;
+        const chat = ctx.chat ?? (ctx as any).message?.chat ?? ctx.callbackQuery?.message?.chat;
+
+        const telegramId = from?.id ?? chat?.id;
+        if (!telegramId) {
             this.logger.warn("Не удалось извлечь telegramId из контекста");
             return null;
         }
+
         return {
-            telegramId: msg.chat.id,
-            username: msg.chat.username,
-            fullName: [msg.chat.first_name, msg.chat.last_name].filter(Boolean).join(" "),
-            language: msg.from?.language_code ?? "ru",
+            telegramId,
+            username: from?.username ?? chat?.username ?? null,
+            fullName: [from?.first_name ?? chat?.first_name, from?.last_name ?? chat?.last_name]
+                .filter(Boolean)
+                .join(" "),
+            language: from?.language_code ?? "ru",
         };
     }
+
 
     async getTgUser(ctx: Context): Promise<User> {
         const data = this.extractTgData(ctx);
