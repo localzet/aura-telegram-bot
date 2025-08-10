@@ -65,7 +65,7 @@ export class BotService {
     let inviter = undefined;
 
     if (!exists) {
-      if (payload && payload.startsWith("ref_")) {
+      if (payload?.startsWith("ref_")) {
         const inviterTelegramId = Number(payload.split("_")[1]);
         if (!isNaN(inviterTelegramId) && inviterTelegramId !== telegramId) {
           log(
@@ -112,7 +112,7 @@ export class BotService {
       `👋 Добро пожаловать, ${user.fullName || "пользователь"}!
         
 🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
-⏳ Подписка:<code> ${auraUser && auraUser.expireAt ? formatExpire(auraUser.expireAt) : "не активна"}</code>
+⏳ Подписка:<code> ${auraUser?.expireAt ? formatExpire(auraUser.expireAt) : "не активна"}</code>
         
 Выберите действие:`,
       {
