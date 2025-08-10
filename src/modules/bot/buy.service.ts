@@ -83,7 +83,7 @@ export class BuyService {
             await this.bot.api.sendInvoice(
                 user.telegramId,
                 `Подписка на ${months} мес`,
-                `Защита интернет-соединения`,
+                "Защита интернет-соединения",
                 purchase.id,
                 'RUB',
                 [
