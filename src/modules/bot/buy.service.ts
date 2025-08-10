@@ -52,7 +52,7 @@ export class BuyService {
                     parse_mode: 'HTML',
                 },
             );
-        } catch (err) {
+        } catch (err: any) {
             this.logger.error(`Ошибка при отображении тарифов: ${err.message}`, err.stack);
             await ctx.reply('⚠️ Произошла ошибка при загрузке тарифов. Попробуйте позже.');
         }
@@ -97,7 +97,7 @@ export class BuyService {
                     protect_content: true,
                 },
             );
-        } catch (err) {
+        } catch (err: any) {
             this.logger.error(`Ошибка при выборе плана: ${err.message}`, err.stack);
             await ctx.reply('⚠️ Не удалось сформировать заказ. Попробуйте позже.');
         }
@@ -125,7 +125,7 @@ export class BuyService {
                 where: {id: purchase.id},
                 data: {status: 'pending'},
             });
-        } catch (err) {
+        } catch (err: any) {
             this.logger.error(`Ошибка при pre_checkout: ${err.message}`, err.stack);
             await ctx.answerPreCheckoutQuery(false, {
                 error_message: 'Ошибка при обработке платежа',
@@ -169,7 +169,7 @@ export class BuyService {
             } else {
                 await ctx.reply('⚠️ Ошибка при активации подписки в системе Aura Continental');
             }
-        } catch (err) {
+        } catch (err: any) {
             this.logger.error(`Ошибка при обработке успешного платежа: ${err.message}`, err.stack);
             await ctx.reply('⚠️ Произошла ошибка при активации подписки.');
         }
