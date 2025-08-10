@@ -20,9 +20,7 @@ export class UserService {
   private extractTgData(ctx: Context) {
     const from = ctx.from;
     const chat =
-      ctx.chat ??
-      ctx.message?.chat ??
-      ctx.callbackQuery?.message?.chat;
+      ctx.chat ?? ctx.message?.chat ?? ctx.callbackQuery?.message?.chat;
 
     const telegramId = from?.id ?? chat?.id;
     if (!telegramId) {
