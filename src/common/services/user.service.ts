@@ -21,7 +21,7 @@ export class UserService {
     const from = ctx.from;
     const chat =
       ctx.chat ??
-      (ctx as any).message?.chat ??
+      ctx.message?.chat ??
       ctx.callbackQuery?.message?.chat;
 
     const telegramId = from?.id ?? chat?.id;
