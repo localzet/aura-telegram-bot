@@ -54,7 +54,13 @@ export class ReferralService {
             startOfMonth.setHours(0, 0, 0, 0);
 
             const referredCountThisMonth = await this.prisma.referral.count({
-                where: {inviterId: user.id, createdAt: {gte: startOfMonth}},
+                where: {
+                    inviter: {
+                        id: user.id,
+                        auraId: {NOT: null},
+                    },
+                    createdAt: {gte: startOfMonth}
+                },
             });
 
             const monthlyReferralDiscount = Math.min(referredCountThisMonth * 5, 25);
@@ -173,7 +179,12 @@ ${persistDiscount[user.level]}
             }
 
             const referrals = await this.prisma.referral.findMany({
-                where: {inviterId: user.id},
+                where: {
+                    inviter: {
+                        id: user.id,
+                        auraId: {NOT: null},
+                    }
+                },
                 include: {invited: true},
                 orderBy: {createdAt: "desc"},
                 take: 20,
@@ -226,7 +237,12 @@ ${persistDiscount[user.level]}
             }
 
             const referrals = await this.prisma.referral.findMany({
-                where: {inviterId: user.id},
+                where: {
+                    inviter: {
+                        id: user.id,
+                        auraId: {NOT: null},
+                    }
+                },
                 include: {invited: true},
                 orderBy: {createdAt: "desc"},
                 take: 20,

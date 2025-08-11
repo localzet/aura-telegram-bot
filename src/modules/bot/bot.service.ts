@@ -89,13 +89,6 @@ export class BotService {
         },
       });
       log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
-
-      await this.bot.api.sendMessage(
-        inviter.telegramId,
-        `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
-        { parse_mode: "HTML" },
-      );
-      log(`Notification sent to inviter ${inviter.telegramId}`);
     }
 
     const kb = new InlineKeyboard().text(

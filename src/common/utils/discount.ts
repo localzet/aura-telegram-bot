@@ -22,7 +22,10 @@ export async function getPrise(months: number, user: User, prisma: PrismaService
 
     const referredCountThisMonth = await prisma.referral.count({
         where: {
-            inviterId: user.id,
+            inviter: {
+                id: user.id,
+                auraId: {NOT: null},
+            },
             createdAt: {gte: startOfMonth},
         },
     });
