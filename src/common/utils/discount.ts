@@ -24,7 +24,7 @@ export async function getPrise(months: number, user: User, prisma: PrismaService
         where: {
             inviter: {
                 id: user.id,
-                auraId: {NOT: null},
+                auraId: {not: null},
             },
             createdAt: {gte: startOfMonth},
         },

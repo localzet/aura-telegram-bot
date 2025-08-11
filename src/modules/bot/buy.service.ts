@@ -188,7 +188,8 @@ export class BuyService {
             });
 
             const ref = await this.prisma.referral.findUnique({
-                where: {invited: {id: user.id}}
+                where: {invitedId: user.id},
+                include: {inviter: true}
             });
 
             await this.bot.api.sendMessage(
@@ -196,8 +197,6 @@ export class BuyService {
                 `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
                 {parse_mode: "HTML"},
             );
-            log(`Notification sent to inviter ${ref.inviter.telegramId}`);
-
 
             const expireDate = auraUser?.expireAt
                 ? new Date(auraUser.expireAt)
