@@ -198,7 +198,7 @@ export class BuyService {
                     {parse_mode: "HTML"},
                 );
             }
-            
+
             const expireDate = auraUser?.expireAt
                 ? new Date(auraUser.expireAt)
                 : null;
