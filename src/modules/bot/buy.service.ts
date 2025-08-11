@@ -191,13 +191,14 @@ export class BuyService {
                 where: {invitedId: user.id},
                 include: {inviter: true}
             });
-
-            await this.bot.api.sendMessage(
-                ref.inviter.telegramId,
-                `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
-                {parse_mode: "HTML"},
-            );
-
+            if (ref) {
+                await this.bot.api.sendMessage(
+                    ref.inviter.telegramId,
+                    `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
+                    {parse_mode: "HTML"},
+                );
+            }
+            
             const expireDate = auraUser?.expireAt
                 ? new Date(auraUser.expireAt)
                 : null;
