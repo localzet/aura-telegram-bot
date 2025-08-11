@@ -201,12 +201,12 @@ export class BuyService {
           `✅ Оплата прошла успешно. Подписка активна до ${expireDate.toLocaleDateString("ru-RU")}`,
         );
       } else {
-          await this
-              .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
+        await this
+          .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
 <b>User:</b> ${ctx.from?.id}
 <b>Purchase:</b> ${payment?.invoice_payload}`);
 
-          await ctx.reply(
+        await ctx.reply(
           "⚠️ Ошибка при активации подписки в системе Aura Continental",
         );
       }
