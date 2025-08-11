@@ -1,24 +1,33 @@
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable, Logger } from "@nestjs/common";
 import {
-  GrammyException,
-  GrammyExecutionContext,
+    GrammyException,
+    GrammyExecutionContext,
 } from "@localzet/grammy-nestjs";
 import { Context } from "grammy";
 import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AdminGuard implements CanActivate {
-  constructor(private config: ConfigService) {}
+    private readonly logger = new Logger(AdminGuard.name);
 
-  canActivate(context: ExecutionContext): boolean {
-    const ctx = GrammyExecutionContext.create(context);
-    const { from } = ctx.getContext<Context>();
-    const admin = this.config.getOrThrow<number>("ADMIN_TG_ID");
+    constructor(private config: ConfigService) {}
 
-    if (admin !== from?.id) {
-      throw new GrammyException("You are not admin 😡");
+    canActivate(context: ExecutionContext): boolean {
+        const ctx = GrammyExecutionContext.create(context);
+        const { from } = ctx.getContext<Context>();
+
+        const admin = Number(this.config.getOrThrow<string>("ADMIN_TG_ID"));
+        const userId = from?.id;
+
+        this.logger.debug(`Admin ID from config: ${admin}`);
+        this.logger.debug(`User ID from message: ${userId}`);
+
+        if (admin !== userId) {
+            this.logger.warn(`Access denied for user ${userId}`);
+            throw new GrammyException("You are not admin 😡");
+        }
+
+        this.logger.log(`Access granted for admin ${userId}`);
+        return true;
     }
-
-    return true;
-  }
 }
