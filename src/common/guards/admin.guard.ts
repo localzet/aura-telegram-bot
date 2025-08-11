@@ -1,24 +1,24 @@
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
-import {
-  GrammyExecutionContext,
-  GrammyException,
-} from "@localzet/grammy-nestjs";
-import { Context } from "grammy";
+import {CanActivate, ExecutionContext, Injectable} from "@nestjs/common";
+import {GrammyException, GrammyExecutionContext,} from "@localzet/grammy-nestjs";
+import {Context} from "grammy";
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class AdminGuard implements CanActivate {
-  private readonly ADMIN_IDS = [312211167];
-
-  canActivate(context: ExecutionContext): boolean {
-    const ctx = GrammyExecutionContext.create(context);
-    const { from } = ctx.getContext<Context>();
-
-    // @ts-expect-error
-    const isAdmin = this.ADMIN_IDS.includes(from?.id);
-    if (!isAdmin) {
-      throw new GrammyException("You are not admin 😡");
+    constructor(
+        private config: ConfigService,
+    ) {
     }
 
-    return true;
-  }
+    canActivate(context: ExecutionContext): boolean {
+        const ctx = GrammyExecutionContext.create(context);
+        const {from} = ctx.getContext<Context>();
+        const admin = this.config.getOrThrow<number>("ADMIN_TG_ID");
+
+        if (admin !== from?.id) {
+            throw new GrammyException("You are not admin 😡");
+        }
+
+        return true;
+    }
 }
