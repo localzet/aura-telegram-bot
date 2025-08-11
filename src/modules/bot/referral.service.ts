@@ -81,7 +81,7 @@ export class ReferralService {
                     note = "(пожизненно)";
                     break;
             }
-            
+
             const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId}`;
             const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(
                 'Присоединяйся! Получи бонусы по моей ссылке'

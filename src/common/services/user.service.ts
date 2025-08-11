@@ -105,8 +105,8 @@ export class UserService {
 
     async getUser(ctx: Context) {
         return {
-            tg: await this.getTgUser(ctx),
             aura: await this.getAuraUser(ctx),
+            tg: await this.getTgUser(ctx),
         };
     }
 
