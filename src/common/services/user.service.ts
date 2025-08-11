@@ -168,7 +168,7 @@ export class UserService {
         expireAt,
         uuid: auraUser.response.response.uuid,
         description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId}:${tgUser.id}`,
-        tag: tgUser.level,
+        tag: tgUser.level.toUpperCase(),
         telegramId: tgUser.telegramId,
         activeInternalSquads,
       });
