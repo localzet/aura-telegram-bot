@@ -147,7 +147,7 @@ export class BotService {
       );
     }
 
-    const helpChatId = this.config.getOrThrow<string>("HELP_CHAT_ID");
+    const helpChatId = this.config.getOrThrow<number>("ADMIN_TG_ID");
 
     await this.bot.api.sendMessage(
       helpChatId,
