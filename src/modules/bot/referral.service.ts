@@ -240,7 +240,7 @@ ${persistDiscount[user.level]}
                 where: {
                     inviter: {
                         id: user.id,
-                        auraId: {not: null},
+                        // auraId: {not: null},
                     }
                 },
                 include: {invited: true},
