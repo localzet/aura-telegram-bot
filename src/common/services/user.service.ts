@@ -63,7 +63,6 @@ export class UserService {
 
       const data = this.extractTgData(ctx);
       if (!data) return undefined;
-
       const users = await this.axios.getUsersByTelegramId(data.telegramId);
       if (!users.isOk || !users.response) {
         this.logger.warn(

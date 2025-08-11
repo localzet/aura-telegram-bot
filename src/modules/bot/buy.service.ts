@@ -197,16 +197,16 @@ export class BuyService {
         : null;
 
       if (expireDate) {
-        await this
-          .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
-<b>User:</b> ${ctx.from?.id}
-<b>Purchase:</b> ${payment?.invoice_payload}`);
-
         await ctx.reply(
           `✅ Оплата прошла успешно. Подписка активна до ${expireDate.toLocaleDateString("ru-RU")}`,
         );
       } else {
-        await ctx.reply(
+          await this
+              .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
+<b>User:</b> ${ctx.from?.id}
+<b>Purchase:</b> ${payment?.invoice_payload}`);
+
+          await ctx.reply(
           "⚠️ Ошибка при активации подписки в системе Aura Continental",
         );
       }
