@@ -1,18 +1,18 @@
-import {CallbackQuery, Ctx, InjectBot, Update} from '@localzet/grammy-nestjs';
-import {UseFilters, UseInterceptors} from '@nestjs/common';
-import debug from 'debug';
-import {Bot, Context, InlineKeyboard} from 'grammy';
+import {CallbackQuery, Ctx, InjectBot, Update} from "@localzet/grammy-nestjs";
+import {UseFilters, UseInterceptors} from "@nestjs/common";
+import debug from "debug";
+import {Bot, Context, InlineKeyboard} from "grammy";
 
-import {BotName} from '@modules/bot/bot.constants';
-import {ResponseTimeInterceptor} from '@common/interceptors';
-import {GrammyExceptionFilter} from '@common/filters';
-import {PrismaService} from '@common/services/prisma.service';
-import {prettyLevel} from '@common/utils';
-import {User, UserLevel} from '@prisma/client';
-import {UserService} from '@common/services/user.service';
+import {BotName} from "@modules/bot/bot.constants";
+import {ResponseTimeInterceptor} from "@common/interceptors";
+import {GrammyExceptionFilter} from "@common/filters";
+import {PrismaService} from "@common/services/prisma.service";
+import {prettyLevel} from "@common/utils";
+import {User, UserLevel} from "@prisma/client";
+import {UserService} from "@common/services/user.service";
 
-const log = debug('bot:referral');
-const logError = debug('bot:referral:error');
+const log = debug("bot:referral");
+const logError = debug("bot:referral:error");
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -24,7 +24,7 @@ export class ReferralService {
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
     ) {
-        log('ReferralService initialized');
+        log("ReferralService initialized");
     }
 
     private async getUserSafe(ctx: Context): Promise<User | null> {
@@ -32,17 +32,20 @@ export class ReferralService {
             const {tg: user} = await this.userService.getUser(ctx);
             return user;
         } catch (error) {
-            logError('Failed to get user from context:', error);
+            logError("Failed to get user from context:", error);
             return null;
         }
     }
 
-    @CallbackQuery('ref')
+    @CallbackQuery("ref")
     async onRef(@Ctx() ctx: Context): Promise<void> {
         try {
             const user = await this.getUserSafe(ctx);
             if (!user) {
-                await ctx.answerCallbackQuery({text: 'Не удалось получить данные пользователя', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Не удалось получить данные пользователя",
+                    show_alert: true,
+                });
                 return;
             }
 
@@ -57,24 +60,29 @@ export class ReferralService {
             const monthlyReferralDiscount = Math.min(referredCountThisMonth * 5, 25);
 
             let totalDiscount = user.discount ?? 0;
-            let note = '';
+            let note = "";
 
             switch (user.level) {
-                case 'ferrum':
+                case "ferrum":
                     totalDiscount = Math.min(totalDiscount + monthlyReferralDiscount, 25);
                     break;
-                case 'argentum':
-                    totalDiscount = Math.min(totalDiscount + 25 + monthlyReferralDiscount, 50);
+                case "argentum":
+                    totalDiscount = Math.min(
+                        totalDiscount + 25 + monthlyReferralDiscount,
+                        50,
+                    );
                     break;
-                case 'aurum':
+                case "aurum":
                     totalDiscount = Math.min(totalDiscount + 50, 100);
-                    note = '(фиксированная)';
+                    note = "(фиксированная)";
                     break;
-                case 'platinum':
+                case "platinum":
                     totalDiscount = 100;
-                    note = '(пожизненно)';
+                    note = "(пожизненно)";
                     break;
             }
+
+            const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId}`;
 
             const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId}`;
             const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(
@@ -115,19 +123,19 @@ ${persistDiscount[user.level]}
 
             log(`onRef: user ${user.telegramId} viewed referral info`);
         } catch (error) {
-            logError('onRef error:', error);
+            logError("onRef error:", error);
             await ctx.answerCallbackQuery({
-                text: 'Произошла ошибка при получении реферальной информации',
-                show_alert: true
+                text: "Произошла ошибка при получении реферальной информации",
+                show_alert: true,
             });
         }
     }
 
-    @CallbackQuery('ref_levels')
+    @CallbackQuery("ref_levels")
     async onRefLevels(@Ctx() ctx: Context): Promise<void> {
         const description =
-            '\nВ Aura Network мы разработали прогрессивную реферальную систему. ' +
-            'Пользователи делятся на несколько уровней, от этого зависит ваша скидка и не только.\n';
+            "\nВ Aura Network мы разработали прогрессивную реферальную систему. " +
+            "Пользователи делятся на несколько уровней, от этого зависит ваша скидка и не только.\n";
 
         const levels = `
 <b>Золотой:</b>
@@ -145,67 +153,76 @@ ${persistDiscount[user.level]}
 ℹ️ Начальный уровень каждого пользователя
 `;
 
-        const kb = new InlineKeyboard().text('⬅️ Назад', 'ref');
+        const kb = new InlineKeyboard().text("⬅️ Назад", "ref");
 
         await ctx.answerCallbackQuery();
-        await ctx.editMessageText(
-            `${description}\n${levels}`,
-            {reply_markup: kb, parse_mode: 'HTML'},
-        );
+        await ctx.editMessageText(`${description}\n${levels}`, {
+            reply_markup: kb,
+            parse_mode: "HTML",
+        });
     }
 
-    @CallbackQuery('my_refs')
+    @CallbackQuery("my_refs")
     async onMyRefs(@Ctx() ctx: Context): Promise<void> {
         try {
             const user = await this.getUserSafe(ctx);
             if (!user) {
-                await ctx.answerCallbackQuery({text: 'Не удалось получить данные пользователя', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Не удалось получить данные пользователя",
+                    show_alert: true,
+                });
                 return;
             }
 
             const referrals = await this.prisma.referral.findMany({
                 where: {inviterId: user.id},
                 include: {invited: true},
-                orderBy: {createdAt: 'desc'},
+                orderBy: {createdAt: "desc"},
                 take: 20,
             });
 
             if (!referrals.length) {
-                await ctx.answerCallbackQuery('У вас нет приглашённых пользователей.');
+                await ctx.answerCallbackQuery("У вас нет приглашённых пользователей.");
                 log(`onMyRefs: user ${user.telegramId} has no referrals`);
                 return;
             }
 
             const text =
-                '📋 Ваши приглашённые:\n\n' +
+                "📋 Ваши приглашённые:\n\n" +
                 referrals
-                    .map(ref => {
+                    .map((ref) => {
                         const i = ref.invited;
                         return `• ${i.fullName || i.username || i.telegramId} (${prettyLevel(i.level)})`;
                     })
-                    .join('\n');
+                    .join("\n");
 
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(text);
 
             log(`onMyRefs: listed referrals for user ${user.telegramId}`);
         } catch (error) {
-            logError('onMyRefs error:', error);
-            await ctx.answerCallbackQuery({text: 'Ошибка при получении списка приглашённых', show_alert: true});
+            logError("onMyRefs error:", error);
+            await ctx.answerCallbackQuery({
+                text: "Ошибка при получении списка приглашённых",
+                show_alert: true,
+            });
         }
     }
 
-    @CallbackQuery('ref_manage')
+    @CallbackQuery("ref_manage")
     async onRefManage(@Ctx() ctx: Context): Promise<void> {
         try {
             const user = await this.getUserSafe(ctx);
             if (!user) {
-                await ctx.answerCallbackQuery({text: 'Не удалось получить данные пользователя', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Не удалось получить данные пользователя",
+                    show_alert: true,
+                });
                 return;
             }
 
-            if (!['aurum', 'platinum'].includes(user.level)) {
-                await ctx.answerCallbackQuery({text: 'Недоступно для вашего уровня'});
+            if (!["aurum", "platinum"].includes(user.level)) {
+                await ctx.answerCallbackQuery({text: "Недоступно для вашего уровня"});
                 log(`onRefManage: access denied for user ${user.telegramId}`);
                 return;
             }
@@ -213,7 +230,7 @@ ${persistDiscount[user.level]}
             const referrals = await this.prisma.referral.findMany({
                 where: {inviterId: user.id},
                 include: {invited: true},
-                orderBy: {createdAt: 'desc'},
+                orderBy: {createdAt: "desc"},
                 take: 20,
             });
 
@@ -221,14 +238,18 @@ ${persistDiscount[user.level]}
 
             for (const ref of referrals) {
                 const invited = ref.invited;
-                kb.text(`🎓 ${invited.fullName || invited.username || invited.telegramId}`, `promote_${invited.telegramId}`).row();
+                kb.text(
+                    `🎓 ${invited.fullName || invited.username || invited.telegramId}`,
+                    `promote_${invited.telegramId}`,
+                ).row();
             }
 
             const remainingArgentum = 10 - (user.grantedArgentum ?? 0);
-            const remainingAurum = user.level === 'platinum' ? 5 - (user.grantedAurum ?? 0) : 10;
+            const remainingAurum =
+                user.level === "platinum" ? 5 - (user.grantedAurum ?? 0) : 10;
 
             const limits =
-                user.level === 'platinum'
+                user.level === "platinum"
                     ? `🥇 Золотые: ${remainingAurum} / 5\n🥈 Серебряные: ${remainingArgentum} / 10`
                     : `🥈 Серебряные: ${remainingArgentum} / 10`;
 
@@ -247,8 +268,11 @@ ${limits}
 
             log(`onRefManage: management panel shown for user ${user.telegramId}`);
         } catch (error) {
-            logError('onRefManage error:', error);
-            await ctx.answerCallbackQuery({text: 'Ошибка при открытии панели управления', show_alert: true});
+            logError("onRefManage error:", error);
+            await ctx.answerCallbackQuery({
+                text: "Ошибка при открытии панели управления",
+                show_alert: true,
+            });
         }
     }
 
@@ -257,7 +281,10 @@ ${limits}
         try {
             const user = await this.getUserSafe(ctx);
             if (!user) {
-                await ctx.answerCallbackQuery({text: 'Не удалось получить данные пользователя', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Не удалось получить данные пользователя",
+                    show_alert: true,
+                });
                 return;
             }
 
@@ -265,67 +292,84 @@ ${limits}
             const targetTelegramId = match?.[1] ? Number(match[1]) : null;
             if (!targetTelegramId) return;
 
-            log(`@promote — inviter: ${user.telegramId}, target: ${targetTelegramId}`);
+            log(
+                `@promote — inviter: ${user.telegramId}, target: ${targetTelegramId}`,
+            );
 
-            const target = await this.prisma.user.findUnique({where: {telegramId: targetTelegramId}});
+            const target = await this.prisma.user.findUnique({
+                where: {telegramId: targetTelegramId},
+            });
 
-            if (!target || !['aurum', 'platinum'].includes(user.level)) {
+            if (!target || !["aurum", "platinum"].includes(user.level)) {
                 await ctx.answerCallbackQuery({
-                    text: 'Недоступно для вашего уровня',
+                    text: "Недоступно для вашего уровня",
                     show_alert: true,
                 });
                 return;
             }
 
             const referral = await this.prisma.referral.findUnique({
-                where: {inviterId_invitedId: {inviterId: user.id, invitedId: target.id}},
+                where: {
+                    inviterId_invitedId: {inviterId: user.id, invitedId: target.id},
+                },
             });
 
             if (!referral) {
                 await ctx.answerCallbackQuery({
-                    text: 'Этот пользователь не является вашим приглашённым',
+                    text: "Этот пользователь не является вашим приглашённым",
                     show_alert: true,
                 });
                 return;
             }
 
             const buildButtons = (buttons: { text: string; data: string }[]) => ({
-                inline_keyboard: buttons.map(btn => [{text: btn.text, callback_data: btn.data}]),
+                inline_keyboard: buttons.map((btn) => [
+                    {text: btn.text, callback_data: btn.data},
+                ]),
             });
 
             await ctx.answerCallbackQuery();
 
-            if (user.level === 'platinum') {
+            if (user.level === "platinum") {
                 await ctx.editMessageText(
                     `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId}</b>:`,
                     {
-                        parse_mode: 'HTML',
+                        parse_mode: "HTML",
                         reply_markup: buildButtons([
-                            {text: '🥇 Золотой', data: `grant_${targetTelegramId}_aurum`},
-                            {text: '🥈 Серебряный', data: `grant_${targetTelegramId}_argentum`},
-                            {text: '🥉 Базовый', data: `grant_${targetTelegramId}_ferrum`},
+                            {text: "🥇 Золотой", data: `grant_${targetTelegramId}_aurum`},
+                            {
+                                text: "🥈 Серебряный",
+                                data: `grant_${targetTelegramId}_argentum`,
+                            },
+                            {text: "🥉 Базовый", data: `grant_${targetTelegramId}_ferrum`},
                         ]),
                     },
                 );
                 return;
             }
 
-            if (user.level === 'aurum') {
+            if (user.level === "aurum") {
                 await ctx.editMessageText(
                     `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId}</b>:`,
                     {
-                        parse_mode: 'HTML',
+                        parse_mode: "HTML",
                         reply_markup: buildButtons([
-                            {text: '🥈 Серебряный', data: `grant_${targetTelegramId}_argentum`},
-                            {text: '🥉 Базовый', data: `grant_${targetTelegramId}_ferrum`},
+                            {
+                                text: "🥈 Серебряный",
+                                data: `grant_${targetTelegramId}_argentum`,
+                            },
+                            {text: "🥉 Базовый", data: `grant_${targetTelegramId}_ferrum`},
                         ]),
                     },
                 );
                 return;
             }
         } catch (error) {
-            logError('onPromote error:', error);
-            await ctx.answerCallbackQuery({text: 'Ошибка при выборе уровня', show_alert: true});
+            logError("onPromote error:", error);
+            await ctx.answerCallbackQuery({
+                text: "Ошибка при выборе уровня",
+                show_alert: true,
+            });
         }
     }
 
@@ -334,41 +378,62 @@ ${limits}
         try {
             const user = await this.getUserSafe(ctx);
             if (!user) {
-                await ctx.answerCallbackQuery({text: 'Не удалось получить данные пользователя', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Не удалось получить данные пользователя",
+                    show_alert: true,
+                });
                 return;
             }
 
-            const match = ctx.callbackQuery?.data?.match(/^grant_(\d+)_(ferrum|argentum|aurum)$/);
+            const match = ctx.callbackQuery?.data?.match(
+                /^grant_(\d+)_(ferrum|argentum|aurum)$/,
+            );
             if (!match) {
-                await ctx.answerCallbackQuery({text: 'Некорректные данные', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Некорректные данные",
+                    show_alert: true,
+                });
                 return;
             }
 
             const targetTelegramId = Number(match[1]);
             const newLevel = match[2] as UserLevel;
 
-            const targetUser = await this.prisma.user.findUnique({where: {telegramId: targetTelegramId}});
+            const targetUser = await this.prisma.user.findUnique({
+                where: {telegramId: targetTelegramId},
+            });
             if (!targetUser) {
-                await ctx.answerCallbackQuery({text: 'Пользователь не найден', show_alert: true});
+                await ctx.answerCallbackQuery({
+                    text: "Пользователь не найден",
+                    show_alert: true,
+                });
                 return;
             }
 
             // Проверка прав текущего пользователя на назначение уровня
-            if (!['aurum', 'platinum'].includes(user.level)) {
-                await ctx.answerCallbackQuery({text: 'Недостаточно прав для изменения уровня', show_alert: true});
+            if (!["aurum", "platinum"].includes(user.level)) {
+                await ctx.answerCallbackQuery({
+                    text: "Недостаточно прав для изменения уровня",
+                    show_alert: true,
+                });
                 return;
             }
 
             // Логика лимитов: platinum может назначить aurum (5), argentum (10)
             // aurum — только argentum (10)
-            if (user.level === 'aurum' && newLevel === 'aurum') {
-                await ctx.answerCallbackQuery({text: 'Вы не можете назначить этот уровень', show_alert: true});
+            if (user.level === "aurum" && newLevel === "aurum") {
+                await ctx.answerCallbackQuery({
+                    text: "Вы не можете назначить этот уровень",
+                    show_alert: true,
+                });
                 return;
             }
 
             // Проверка лимитов назначений
-            const grantedField = newLevel === 'aurum' ? 'grantedAurum' : 'grantedArgentum';
-            const maxLimit = newLevel === 'aurum' ? (user.level === 'platinum' ? 5 : 0) : 10;
+            const grantedField =
+                newLevel === "aurum" ? "grantedAurum" : "grantedArgentum";
+            const maxLimit =
+                newLevel === "aurum" ? (user.level === "platinum" ? 5 : 0) : 10;
             const grantedCount = user[grantedField] ?? 0;
 
             if (grantedCount >= maxLimit) {
@@ -394,17 +459,24 @@ ${limits}
                 data: updateData,
             });
 
-            await ctx.answerCallbackQuery({text: `Пользователю назначен уровень ${prettyLevel(newLevel)}`});
+            await ctx.answerCallbackQuery({
+                text: `Пользователю назначен уровень ${prettyLevel(newLevel)}`,
+            });
 
             await ctx.editMessageText(
                 `✅ Пользователю <b>${targetUser.fullName || targetUser.username || targetUser.telegramId}</b> успешно назначен уровень <b>${prettyLevel(newLevel)}</b>.`,
-                {parse_mode: 'HTML'},
+                {parse_mode: "HTML"},
             );
 
-            log(`User ${user.telegramId} granted level ${newLevel} to ${targetTelegramId}`);
+            log(
+                `User ${user.telegramId} granted level ${newLevel} to ${targetTelegramId}`,
+            );
         } catch (error) {
-            logError('changeUserLevel error:', error);
-            await ctx.answerCallbackQuery({text: 'Ошибка при изменении уровня', show_alert: true});
+            logError("changeUserLevel error:", error);
+            await ctx.answerCallbackQuery({
+                text: "Ошибка при изменении уровня",
+                show_alert: true,
+            });
         }
     }
 }
