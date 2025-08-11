@@ -57,6 +57,8 @@ export class ReferralService {
                 where: {
                     inviter: {
                         id: user.id,
+                    },
+                    invited: {
                         auraId: {not: null},
                     },
                     createdAt: {gte: startOfMonth}
@@ -182,6 +184,8 @@ ${persistDiscount[user.level]}
                 where: {
                     inviter: {
                         id: user.id,
+                    },
+                    invited: {
                         auraId: {not: null},
                     }
                 },
@@ -240,8 +244,7 @@ ${persistDiscount[user.level]}
                 where: {
                     inviter: {
                         id: user.id,
-                        // auraId: {not: null},
-                    }
+                    },
                 },
                 include: {invited: true},
                 orderBy: {createdAt: "desc"},
