@@ -5,7 +5,7 @@ import {BotName} from "@modules/bot/bot.constants";
 import {ResponseTimeInterceptor} from "@common/interceptors";
 import {GrammyExceptionFilter} from "@common/filters";
 import {PrismaService} from "@common/services/prisma.service";
-import {getPrise} from "@common/utils/discount";
+import {getPrice} from "@common/utils/discount";
 import {ConfigService} from "@nestjs/config";
 import {UserService} from "@common/services/user.service";
 
@@ -29,6 +29,10 @@ export class BuyService {
         try {
             const {tg: user} = await this.user.getUser(ctx);
 
+            const {
+                firstDiscount,
+            } = await getPrice(1, user, this.prisma)
+
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(
                 `📦 Выберите тариф для покупки:
@@ -38,7 +42,7 @@ export class BuyService {
 6 месяцев   ${this.calcPrice(6)}р (-20%)
 12 месяцев  ${this.calcPrice(12)}р (-25%)
 </code>
-🎁 Ваша скидка: ${user.discount}%
+🎁 Ваша скидка: ${firstDiscount}%
         `,
                 {
                     reply_markup: new InlineKeyboard()
@@ -73,7 +77,7 @@ export class BuyService {
             if (!months) return;
 
             const {tg: user} = await this.user.getUser(ctx);
-            const price = await getPrise(months, user, this.prisma);
+            const {price} = await getPrice(months, user, this.prisma);
 
             await ctx.answerCallbackQuery();
 

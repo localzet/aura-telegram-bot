@@ -10,6 +10,7 @@ import {PrismaService} from "@common/services/prisma.service";
 import {prettyLevel} from "@common/utils";
 import {User, UserLevel} from "@prisma/client";
 import {UserService} from "@common/services/user.service";
+import {getPrice} from "@common/utils/discount";
 
 const log = debug("bot:referral");
 const logError = debug("bot:referral:error");
@@ -49,46 +50,10 @@ export class ReferralService {
                 return;
             }
 
-            const startOfMonth = new Date();
-            startOfMonth.setDate(1);
-            startOfMonth.setHours(0, 0, 0, 0);
-
-            const referredCountThisMonth = await this.prisma.referral.count({
-                where: {
-                    inviter: {
-                        id: user.id,
-                    },
-                    invited: {
-                        auraId: {not: null},
-                    },
-                    createdAt: {gte: startOfMonth}
-                },
-            });
-
-            const monthlyReferralDiscount = Math.min(referredCountThisMonth * 5, 25);
-
-            let totalDiscount = user.discount ?? 0;
-            let note = "";
-
-            switch (user.level) {
-                case "ferrum":
-                    totalDiscount = Math.min(totalDiscount + monthlyReferralDiscount, 25);
-                    break;
-                case "argentum":
-                    totalDiscount = Math.min(
-                        totalDiscount + 25 + monthlyReferralDiscount,
-                        50,
-                    );
-                    break;
-                case "aurum":
-                    totalDiscount = Math.min(totalDiscount + 50, 100);
-                    note = "(фиксированная)";
-                    break;
-                case "platinum":
-                    totalDiscount = 100;
-                    note = "(пожизненно)";
-                    break;
-            }
+            const {
+                referredCountThisMonth,
+                firstDiscount,
+            } = await getPrice(1, user, this.prisma)
 
             const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId}`;
             const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(
@@ -121,7 +86,7 @@ ${persistDiscount[user.level]}
 
 🔗 Ваша ссылка: <code>${refLink}</code>
 👤 Приглашено в этом месяце: <code>${referredCountThisMonth}</code>
-📉 Текущая скидка: <code>${totalDiscount}%</code> ${note}
+📉 Текущая скидка: <code>${firstDiscount}%</code>
 
 <i>Важно! Скидка даётся только за друзей, приглашенных в текущем месяце (каждый месяц счетчик сбрасывается)</i>`,
                 {reply_markup: kb, parse_mode: 'HTML'},
@@ -146,6 +111,7 @@ ${persistDiscount[user.level]}
         const levels = `
 <b>Золотой:</b>
 - Скидка 50% навсегда
+- +5% скидки за каждого приглашенного друга, до 25% (суммируется с постоянной скидкой)
 - Возможность пригласить до 10 друзей в "Серебряный" уровень
 ℹ️ Можно выиграть в конкурсах и соревнованиях в виде промокода
 

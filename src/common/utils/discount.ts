@@ -10,12 +10,7 @@ const DISCOUNTS = {
     12: 0.75,
 };
 
-export function price(months: number): number {
-    const discount = DISCOUNTS[months as keyof typeof DISCOUNTS] ?? 1;
-    return BASE_PRICE * months * discount;
-}
-
-export async function getPrise(months: number, user: User, prisma: PrismaService) {
+export async function getPrice(months: number, user: User, prisma: PrismaService) {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -24,43 +19,70 @@ export async function getPrise(months: number, user: User, prisma: PrismaService
         where: {
             inviter: {
                 id: user.id,
+            },
+            invited: {
                 auraId: {not: null},
             },
-            createdAt: {gte: startOfMonth},
+            createdAt: {gte: startOfMonth}
+        },
+    });
+
+    const referral = await prisma.referral.count({
+        where: {
+            invited: {
+                id: user.id,
+            },
         },
     });
 
     const referralBonus = Math.min(referredCountThisMonth * 5, 25);
-    const baseDiscount = user.discount ?? 0;
-
-    let maxDiscount = 0;
-    let firstDiscount = 0;
+    const baseDiscount = user.discount ?? 0 + (referral ? 5 : 0);
+    let maxDiscount = 100;
     let persistDiscount = 0;
+    let note = "";
 
     switch (user.level) {
-        case 'ferrum':
+        case "ferrum":
+            persistDiscount = 0;
             maxDiscount = 25;
             break;
-        case 'argentum':
+        case "argentum":
+            persistDiscount = 25;
             maxDiscount = 50;
-            persistDiscount = maxDiscount / 2;
             break;
-        case 'aurum':
-            maxDiscount = 100;
-            persistDiscount = maxDiscount / 2;
+        case "aurum":
+            persistDiscount = 50;
+            maxDiscount = 75;
             break;
-        case 'platinum':
+        case "platinum":
+            persistDiscount = 100;
             maxDiscount = 100;
-            persistDiscount = maxDiscount;
+            note = "(пожизненно)";
             break;
     }
 
-    firstDiscount = Math.min(baseDiscount + referralBonus, maxDiscount);
+    const firstDiscount = Math.min(baseDiscount + persistDiscount + referralBonus, maxDiscount);
     const totalDiscount = Math.min(baseDiscount + persistDiscount, maxDiscount);
 
     const base = BASE_PRICE * DISCOUNTS[months as keyof typeof DISCOUNTS];
     const firstMonthPrice = base * (1 - firstDiscount / 100);
-    const recurringMonthsPrice = base * (months - 1) * (1 - totalDiscount / 100);
+    const totalMonthPrice = base * (months - 1) * (1 - totalDiscount / 100);
 
-    return months === 1 ? firstMonthPrice : firstMonthPrice + recurringMonthsPrice;
+    const price = months === 1 ? firstMonthPrice : firstMonthPrice + totalMonthPrice;
+
+    return {
+        price,
+        note,
+
+        referredCountThisMonth,
+
+        baseDiscount,       // Личная скидка пользователя
+        maxDiscount,        // Максимально доступная скидка уровня
+        persistDiscount,    // Постоянная скидка уровня
+
+        firstDiscount,      // Скидка за 1 месяц
+        totalDiscount,      // Скидка за последующие
+        firstMonthPrice,    // Цена за 1 месяц
+        totalMonthPrice,    // Цена за последующие
+    };
 }
