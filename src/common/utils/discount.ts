@@ -68,7 +68,7 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
     const firstMonthPrice = base * (1 - firstDiscount / 100);
     const totalMonthPrice = base * (months - 1) * (1 - totalDiscount / 100);
 
-    const price = months === 1 ? firstMonthPrice : firstMonthPrice + totalMonthPrice;
+    const price = Number(months === 1 ? firstMonthPrice : firstMonthPrice + totalMonthPrice);
 
     return {
         price,

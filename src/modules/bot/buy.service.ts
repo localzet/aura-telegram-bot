@@ -113,7 +113,6 @@ export class BuyService {
             this.logger.error(`Ошибка при выборе плана: ${err.message}`, err.stack);
             await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
-Price: ${price}
 <pre>${err.message}</pre>`);
             await ctx.reply("⚠️ Не удалось сформировать заказ. Попробуйте позже.");
         }
