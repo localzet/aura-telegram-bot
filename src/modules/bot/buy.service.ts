@@ -63,7 +63,6 @@ export class BuyService {
             );
             await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
-Price: ${price}
 <pre>${err.message}</pre>`);
             await ctx.reply(
                 "⚠️ Произошла ошибка при загрузке тарифов. Попробуйте позже.",
