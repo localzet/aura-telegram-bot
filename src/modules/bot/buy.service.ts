@@ -101,7 +101,7 @@ export class BuyService {
                 [
                     {
                         label: `Подписка на ${months} мес`,
-                        amount: price * 100,
+                        amount: Math.round(price * 100),
                     },
                 ],
                 {

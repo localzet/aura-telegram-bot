@@ -70,7 +70,7 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
 
     const price = (months === 1 ? firstMonthPrice : firstMonthPrice + totalMonthPrice);
 
-    console.log(typeof price, price)
+    // console.log(typeof price, price)
     return {
         price,
         note,
