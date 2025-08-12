@@ -71,12 +71,6 @@ export class BotService {
                     });
                 }
             }
-
-            if (!inviter) {
-                await ctx.reply(
-                    '👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.');
-                return;
-            }
         }
 
         const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
@@ -88,6 +82,9 @@ export class BotService {
                 },
             });
             log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
+        } else if (!inviter && !auraUser) {
+            await ctx.reply(`👋 Добро пожаловать, ${user.fullName || "пользователь"}!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
+            return;
         }
 
         const kb = new InlineKeyboard().text(
