@@ -36,7 +36,7 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
     });
 
     const referralBonus = Math.min(referredCountThisMonth * 5, 25);
-    const baseDiscount = user.discount ?? 0 + (referral ? 5 : 0);
+    const baseDiscount = (user.discount ?? 0) + (referral ? 5 : 0);
     let maxDiscount = 100;
     let persistDiscount = 0;
     let note = "";
