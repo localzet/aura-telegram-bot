@@ -86,7 +86,7 @@ export class AxiosService {
         return this.sendRequest<GetUserByUuidCommand.Response>(GetUserByUuidCommand, undefined, [uuid]);
     }
 
-    public getUsersByTelegramId(telegramId: number) {
+    public getUsersByTelegramId(telegramId: number | string) {
         return this.sendRequest<GetUserByTelegramIdCommand.Response>(
             GetUserByTelegramIdCommand,
             undefined,

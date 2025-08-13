@@ -64,10 +64,10 @@ export class UserService {
 
             const data = this.extractTgData(ctx);
             if (!data) return undefined;
-            const users = await this.axios.getUsersByTelegramId(data.telegramId);
+            const users = await this.axios.getUsersByTelegramId(data.telegramId.toString());
             if (!users.isOk || !users.response) {
                 this.logger.warn(
-                    `Aura-пользователь по Telegram ID ${data.telegramId} не найден`,
+                    `Aura-пользователь по Telegram ID ${data.telegramId.toString()} не найден`,
                 );
                 return undefined;
             }
@@ -123,12 +123,12 @@ export class UserService {
 
             const auraUser = await this.axios.createUser({
                 expireAt,
-                username: `tg_${tgUser.telegramId}`,
+                username: `tg_${tgUser.telegramId.toString()}`,
                 status: "ACTIVE",
                 shortUuid: tgUser.id,
-                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId}:${tgUser.id}`,
+                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId.toString()}:${tgUser.id}`,
                 tag: tgUser.level.toUpperCase(),
-                telegramId: tgUser.telegramId,
+                telegramId: Number(tgUser.telegramId),
                 activeInternalSquads,
             });
 
@@ -141,7 +141,7 @@ export class UserService {
             }
 
             this.logger.warn(
-                `Не удалось создать Aura-пользователя для Telegram ID ${tgUser.telegramId}`,
+                `Не удалось создать Aura-пользователя для Telegram ID ${tgUser.telegramId.toString()}`,
             );
             return undefined;
         } catch (err) {
@@ -174,9 +174,9 @@ export class UserService {
             const updated = await this.axios.updateUser({
                 expireAt,
                 uuid: auraUser.response.response.uuid,
-                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId}:${tgUser.id}`,
+                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId.toString()}:${tgUser.id}`,
                 tag: tgUser.level.toUpperCase(),
-                telegramId: tgUser.telegramId,
+                telegramId: Number(tgUser.telegramId),
                 activeInternalSquads,
             });
 

@@ -93,7 +93,7 @@ export class BuyService {
             });
 
             await this.bot.api.sendInvoice(
-                user.telegramId,
+                user.telegramId.toString(),
                 `Подписка на ${months} мес`,
                 "Защита интернет-соединения",
                 purchase.id,
@@ -197,8 +197,8 @@ export class BuyService {
             });
             if (ref) {
                 await this.bot.api.sendMessage(
-                    ref.inviter.telegramId,
-                    `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId}</b> зарегистрировался по вашей ссылке!`,
+                    ref.inviter.telegramId.toString(),
+                    `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
                     {parse_mode: "HTML"},
                 );
             }

@@ -17,7 +17,7 @@ datasource db {
 
 model User {
   id         String    @id @default(uuid())
-  telegramId BigInt       @unique
+  telegramId BigInt    @unique
   auraId     String?   @unique
   level      UserLevel @default(ferrum)
 

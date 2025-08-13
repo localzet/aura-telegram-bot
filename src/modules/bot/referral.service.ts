@@ -55,7 +55,7 @@ export class ReferralService {
                 firstDiscount,
             } = await getPrice(1, user, this.prisma)
 
-            const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId}`;
+            const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId.toString()}`;
             const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(
                 'Присоединяйся! Получи бонусы по моей ссылке'
             )}`;
@@ -92,7 +92,7 @@ ${persistDiscount[user.level]}
                 {reply_markup: kb, parse_mode: 'HTML'},
             );
 
-            log(`onRef: user ${user.telegramId} viewed referral info`);
+            log(`onRef: user ${user.telegramId.toString()} viewed referral info`);
         } catch (error) {
             logError("onRef error:", error);
             await ctx.answerCallbackQuery({
@@ -162,7 +162,7 @@ ${persistDiscount[user.level]}
 
             if (!referrals.length) {
                 await ctx.answerCallbackQuery("У вас нет приглашённых пользователей.");
-                log(`onMyRefs: user ${user.telegramId} has no referrals`);
+                log(`onMyRefs: user ${user.telegramId.toString()} has no referrals`);
                 return;
             }
 
@@ -171,14 +171,14 @@ ${persistDiscount[user.level]}
                 referrals
                     .map((ref) => {
                         const i = ref.invited;
-                        return `• ${i.fullName || i.username || i.telegramId} (${prettyLevel(i.level)})`;
+                        return `• ${i.fullName || i.username || i.telegramId.toString()} (${prettyLevel(i.level)})`;
                     })
                     .join("\n");
 
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(text);
 
-            log(`onMyRefs: listed referrals for user ${user.telegramId}`);
+            log(`onMyRefs: listed referrals for user ${user.telegramId.toString()}`);
         } catch (error) {
             logError("onMyRefs error:", error);
             await ctx.answerCallbackQuery({
@@ -202,7 +202,7 @@ ${persistDiscount[user.level]}
 
             if (!["aurum", "platinum"].includes(user.level)) {
                 await ctx.answerCallbackQuery({text: "Недоступно для вашего уровня"});
-                log(`onRefManage: access denied for user ${user.telegramId}`);
+                log(`onRefManage: access denied for user ${user.telegramId.toString()}`);
                 return;
             }
 
@@ -222,8 +222,8 @@ ${persistDiscount[user.level]}
             for (const ref of referrals) {
                 const invited = ref.invited;
                 kb.text(
-                    `🎓 ${invited.fullName || invited.username || invited.telegramId}`,
-                    `promote_${invited.telegramId}`,
+                    `🎓 ${invited.fullName || invited.username || invited.telegramId.toString()}`,
+                    `promote_${invited.telegramId.toString()}`,
                 ).row();
             }
 
@@ -249,7 +249,7 @@ ${limits}
                 {reply_markup: kb},
             );
 
-            log(`onRefManage: management panel shown for user ${user.telegramId}`);
+            log(`onRefManage: management panel shown for user ${user.telegramId.toString()}`);
         } catch (error) {
             logError("onRefManage error:", error);
             await ctx.answerCallbackQuery({
@@ -276,7 +276,7 @@ ${limits}
             if (!targetTelegramId) return;
 
             log(
-                `@promote — inviter: ${user.telegramId}, target: ${targetTelegramId}`,
+                `@promote — inviter: ${user.telegramId.toString()}, target: ${targetTelegramId}`,
             );
 
             const target = await this.prisma.user.findUnique({
@@ -315,7 +315,7 @@ ${limits}
 
             if (user.level === "platinum") {
                 await ctx.editMessageText(
-                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId}</b>:`,
+                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId.toString()}</b>:`,
                     {
                         parse_mode: "HTML",
                         reply_markup: buildButtons([
@@ -333,7 +333,7 @@ ${limits}
 
             if (user.level === "aurum") {
                 await ctx.editMessageText(
-                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId}</b>:`,
+                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId.toString()}</b>:`,
                     {
                         parse_mode: "HTML",
                         reply_markup: buildButtons([
@@ -447,12 +447,12 @@ ${limits}
             });
 
             await ctx.editMessageText(
-                `✅ Пользователю <b>${targetUser.fullName || targetUser.username || targetUser.telegramId}</b> успешно назначен уровень <b>${prettyLevel(newLevel)}</b>.`,
+                `✅ Пользователю <b>${targetUser.fullName || targetUser.username || targetUser.telegramId.toString()}</b> успешно назначен уровень <b>${prettyLevel(newLevel)}</b>.`,
                 {parse_mode: "HTML"},
             );
 
             log(
-                `User ${user.telegramId} granted level ${newLevel} to ${targetTelegramId}`,
+                `User ${user.telegramId.toString()} granted level ${newLevel} to ${targetTelegramId}`,
             );
         } catch (error) {
             logError("changeUserLevel error:", error);

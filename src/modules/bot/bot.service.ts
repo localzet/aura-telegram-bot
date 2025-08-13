@@ -62,7 +62,7 @@ export class BotService {
         if (!exists) {
             if (payload?.startsWith("ref_")) {
                 const inviterTelegramId = Number(payload.split("_")[1]);
-                if (!isNaN(inviterTelegramId) && inviterTelegramId !== telegramId) {
+                if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
                     log(
                         `onStart: Registering new user with inviter ${inviterTelegramId}`,
                     );
