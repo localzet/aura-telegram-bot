@@ -280,7 +280,7 @@ ${limits}
             );
 
             const target = await this.prisma.user.findUnique({
-                where: {telegramId: targetTelegramId},
+                where: {telegramId: BigInt(targetTelegramId)},
             });
 
             if (!target || !["aurum", "platinum"].includes(user.level)) {
@@ -383,7 +383,7 @@ ${limits}
             const newLevel = match[2] as UserLevel;
 
             const targetUser = await this.prisma.user.findUnique({
-                where: {telegramId: targetTelegramId},
+                where: {telegramId: BigInt(targetTelegramId)},
             });
             if (!targetUser) {
                 await ctx.answerCallbackQuery({
@@ -429,7 +429,7 @@ ${limits}
 
             // Обновляем пользователя
             await this.prisma.user.update({
-                where: {telegramId: targetTelegramId},
+                where: {telegramId: BigInt(targetTelegramId)},
                 data: {level: newLevel},
             });
 

@@ -30,7 +30,7 @@ export class UserService {
         }
 
         return {
-            telegramId,
+            telegramId: BigInt(telegramId),
             username: from?.username ?? chat?.username ?? null,
             fullName: [
                 from?.first_name ?? chat?.first_name,
@@ -49,8 +49,8 @@ export class UserService {
         const {telegramId, username, fullName, language} = data;
 
         return this.prisma.user.upsert({
-            where: {telegramId},
-            create: {telegramId, username, fullName, language},
+            where: {telegramId: BigInt(telegramId)},
+            create: {telegramId: BigInt(telegramId), username, fullName, language},
             update: {username, fullName, language},
         });
     }
@@ -88,7 +88,7 @@ export class UserService {
 
             const upsert = {...data, auraId, level};
             await this.prisma.user.upsert({
-                where: {telegramId: data.telegramId},
+                where: {telegramId: BigInt(data.telegramId)},
                 create: upsert,
                 update: upsert,
             });

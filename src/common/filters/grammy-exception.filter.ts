@@ -8,6 +8,7 @@ export class GrammyExceptionFilter implements ExceptionFilter {
         const grammyHost = GrammyArgumentsHost.create(host)
         const ctx = grammyHost.getContext<Context>()
 
-        await ctx.reply(`<b>Error</b>: ${exception.message}`)
+        await ctx.reply(`Произошла внутренняя ошибка, мы уже решаем эту проблему`)
+        console.error(`<b>Error</b>: ${exception.message}`)
     }
 }

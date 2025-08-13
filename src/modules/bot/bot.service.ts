@@ -56,7 +56,7 @@ export class BotService {
 
         log(`onStart: telegramId=${telegramId}, payload=${payload}`);
 
-        const exists = await this.prisma.user.findUnique({where: {telegramId}});
+        const exists = await this.prisma.user.findUnique({where: {telegramId: BigInt(telegramId)}});
         let inviter = undefined;
 
         if (!exists) {
@@ -67,7 +67,7 @@ export class BotService {
                         `onStart: Registering new user with inviter ${inviterTelegramId}`,
                     );
                     inviter = await this.prisma.user.findUnique({
-                        where: {telegramId: inviterTelegramId},
+                        where: {telegramId: BigInt(inviterTelegramId)},
                     });
                 }
             }
@@ -87,10 +87,14 @@ export class BotService {
             return;
         }
 
-        const kb = new InlineKeyboard().text(
-            `📦 ${user.auraId ? "Продлить" : "Купить"}`,
-            "buy",
-        );
+        const kb = new InlineKeyboard()
+
+        if (user.level !== 'platinum') {
+            kb.text(
+                `📦 ${user.auraId ? "Продлить" : "Купить"}`,
+                "buy",
+            );
+        }
         if (auraUser) {
             const sub = await this.axios.getSubscriptionInfo(auraUser.shortUuid);
             if (sub.isOk && sub.response) {
