@@ -58,10 +58,13 @@ export class BotService {
 
         const exists = await this.prisma.user.findUnique({where: {telegramId: BigInt(telegramId)}});
         let inviter = undefined;
+        const existingReferral = exists
+            ? await this.prisma.referral.findUnique({ where: { invitedId: exists.id } })
+            : null;
 
-        if (!exists) {
+        if (!exists || existingReferral) {
             if (payload?.startsWith("ref_")) {
-                const inviterTelegramId = Number(payload.split("_")[1]);
+                const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
                 if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
                     log(
                         `onStart: Registering new user with inviter ${inviterTelegramId}`,
