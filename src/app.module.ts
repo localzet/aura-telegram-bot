@@ -21,23 +21,17 @@ const logger = new Logger("bot:app.module");
             envFilePath: ".env",
             validate: (config) => validateEnvConfig<Env>(configSchema, config),
         }),
-        NestjsGrammyModule.forRootAsync({
-            useFactory: async () => ({
-                botName: BotName,
-                token: process.env.TELEGRAM_TOKEN!,
-                include: [BotModule, WebhookModule],
-                pollingOptions: {
-                    allowed_updates: ["message", "callback_query", "pre_checkout_query"],
-                },
-                useWebhook: true,
-                launchOptions: {
-                    webhook: {
-                        domain: process.env.APP_DOMAIN!,
-                        hookPath: `/webhook/telegram`,
-                    },
-                },
-            })
+        NestjsGrammyModule.forRoot({
+            botName: BotName,
+            token: process.env.TELEGRAM_TOKEN!,
+            include: [BotModule, WebhookModule],
+            pollingOptions: {
+                allowed_updates: ["message", "callback_query", "pre_checkout_query"],
+            },
+            useWebhook: true,
         }),
+        BotModule,
+        WebhookModule,
         AxiosModule,
     ],
     providers: [PrismaService, UserService],

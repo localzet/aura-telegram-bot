@@ -16,22 +16,17 @@ export class AxiosService {
     public axiosInstance: AxiosInstance;
     private readonly logger = new Logger(AxiosService.name);
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(private readonly config: ConfigService) {
         this.axiosInstance = axios.create({
-            baseURL: this.configService.getOrThrow('AURA_PANEL_URL'),
+            baseURL: this.config.getOrThrow('AURA_PANEL_URL'),
             timeout: 45_000,
             headers: {
                 'x-forwarded-for': '127.0.0.1',
                 'x-forwarded-proto': 'https',
                 'user-agent': 'aura-subscriptions',
-                Authorization: `Bearer ${this.configService.get('AURA_API_TOKEN')}`,
+                Authorization: `Bearer ${this.config.getOrThrow('AURA_API_TOKEN')}`,
             },
         });
-
-        const caddyAuthApiToken = this.configService.get('CADDY_AUTH_API_TOKEN');
-        if (caddyAuthApiToken) {
-            this.axiosInstance.defaults.headers.common['X-Api-Key'] = caddyAuthApiToken;
-        }
     }
 
     private handleError<T>(

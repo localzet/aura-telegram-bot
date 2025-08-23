@@ -16,7 +16,7 @@ export class WebhookController {
         @Headers('x-aura-timestamp') timestamp: string,
         @Body() body: any,
     ) {
-        const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET_HEADER');
+        const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET_AURA');
         if (!signature || !timestamp) {
             throw new HttpException('Missing headers', HttpStatus.BAD_REQUEST);
         }
@@ -32,17 +32,36 @@ export class WebhookController {
             throw new HttpException('Invalid payload', HttpStatus.BAD_REQUEST);
         }
 
-        this.webhookService.handleEvent(event, data);
+        try {
+            await this.webhookService.handleEvent(event, data);
+        } catch (e) {
+            throw new HttpException('Bad event', HttpStatus.BAD_REQUEST);
+        }
+
         return {status: 'ok'};
     }
 
     @Post(`telegram`)
-    async handleWebhookTelegram(@Body() body: any) {
+    async handleWebhookTelegram(
+        @Headers('x-telegram-bot-api-secret-token') token: string,
+        @Body() body: any
+    ) {
+        const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET_TELEGRAM');
+        if (!token) {
+            throw new HttpException('Missing headers', HttpStatus.BAD_REQUEST);
+        }
+
+        const valid = token == secret;
+        if (!valid) {
+            throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
+        }
+
         try {
             await this.webhookService.handleUpdate(body);
         } catch (e) {
             throw new HttpException('Bad update', HttpStatus.BAD_REQUEST);
         }
-        return { status: 'ok' };
+
+        return {status: 'ok'};
     }
 }
