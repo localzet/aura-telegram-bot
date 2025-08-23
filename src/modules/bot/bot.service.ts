@@ -63,7 +63,7 @@ export class BotService {
                 const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
                 if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
                     inviter = await this.prisma.user.findUnique({
-                        where: { telegramId: BigInt(inviterTelegramId) },
+                        where: {telegramId: BigInt(inviterTelegramId)},
                     });
                 }
             }
@@ -73,14 +73,14 @@ export class BotService {
             }
         } else {
             const existingReferral = await this.prisma.referral.findUnique({
-                where: { invitedId: exists.id },
+                where: {invitedId: exists.id},
             });
             if (!existingReferral) {
                 if (payload?.startsWith("ref_")) {
                     const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
                     if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
                         inviter = await this.prisma.user.findUnique({
-                            where: { telegramId: BigInt(inviterTelegramId) },
+                            where: {telegramId: BigInt(inviterTelegramId)},
                         });
                     }
                 }
@@ -94,7 +94,7 @@ export class BotService {
         const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
         if (inviter) {
             const existing = await this.prisma.referral.findUnique({
-                where: { invitedId: user.id },
+                where: {invitedId: user.id},
             });
             if (!existing) {
                 await this.prisma.referral.create({
@@ -197,5 +197,9 @@ export class BotService {
         } catch (e) {
             return ctx.reply(`⚠️ Не удалось отправить сообщение: ${e}`);
         }
+    }
+
+    async handleUpdate(body: any) {
+        await this.bot.handleUpdate(body);
     }
 }

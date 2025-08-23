@@ -1,4 +1,4 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {HttpException, HttpStatus, Injectable, Logger} from '@nestjs/common';
 import {createHmac} from 'crypto';
 import {UsersSchema} from '@remnawave/backend-contract';
 import {z} from 'zod';
@@ -64,5 +64,13 @@ export class WebhookService {
         }
 
         this.logger.debug(`Unhandled event: ${event}`);
+    }
+
+    async handleUpdate(body: any) {
+        try {
+            await this.botService.handleUpdate(body);
+        } catch (e) {
+            throw new HttpException('Bad update', HttpStatus.BAD_REQUEST);
+        }
     }
 }

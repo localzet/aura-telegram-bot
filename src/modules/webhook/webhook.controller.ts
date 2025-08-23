@@ -35,4 +35,14 @@ export class WebhookController {
         this.webhookService.handleEvent(event, data);
         return {status: 'ok'};
     }
+
+    @Post(`telegram`)
+    async handleWebhookTelegram(@Body() body: any) {
+        try {
+            await this.webhookService.handleUpdate(body);
+        } catch (e) {
+            throw new HttpException('Bad update', HttpStatus.BAD_REQUEST);
+        }
+        return { status: 'ok' };
+    }
 }
