@@ -58,9 +58,11 @@ export class WebhookService {
             const message = messages[name];
 
             if (message) {
-                await this.botService.sendMessage(tgId, message, {
-                    parse_mode: 'Markdown',
-                });
+                await this.botService.sendMessage(
+                    tgId,
+                    this.escapeMarkdownV2(message),
+                    {parse_mode: 'MarkdownV2'}
+                );
                 return;
             }
         }
@@ -77,9 +79,6 @@ export class WebhookService {
     }
 
     async notifyEvent(message: string): Promise<void> {
-        function escapeMarkdownV2(text: string) {
-            return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
-        }
 
         try {
             const adminId = this.config.getOrThrow<number>("EVENTS_TG_ID");
@@ -92,8 +91,8 @@ export class WebhookService {
 
             await this.botService.sendMessage(
                 adminId,
-                "```json\n" + escapeMarkdownV2(message) + "\n```",
-                { parse_mode: "MarkdownV2" }
+                "```json\n" + this.escapeMarkdownV2(message) + "\n```",
+                {parse_mode: "MarkdownV2"}
             );
         } catch (e: any) {
             this.logger.error(
@@ -102,4 +101,9 @@ export class WebhookService {
             );
         }
     }
+
+    private escapeMarkdownV2(text: string) {
+        return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+    }
+
 }
