@@ -3,6 +3,7 @@ import {createHmac} from 'crypto';
 import {UsersSchema} from '@remnawave/backend-contract';
 import {z} from 'zod';
 import {BotService} from '@modules/bot/bot.service';
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class WebhookService {
@@ -10,6 +11,7 @@ export class WebhookService {
 
     constructor(
         private readonly botService: BotService,
+        private readonly config: ConfigService,
     ) {
     }
 
@@ -71,6 +73,25 @@ export class WebhookService {
             await this.botService.handleUpdate(body);
         } catch (e) {
             throw new HttpException('Bad update', HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    async notifyEvent(message: string): Promise<void> {
+        try {
+            const adminId = this.config.getOrThrow<number>("EVENTS_TG_ID");
+            if (!adminId) {
+                this.logger.warn(
+                    "EVENTS_TG_ID не задан в конфиге, уведомление не отправлено",
+                );
+                return;
+            }
+
+            await this.botService.sendMessage(adminId, `<code>${message}</code>`, {parse_mode: "HTML"});
+        } catch (e: any) {
+            this.logger.error(
+                `Не удалось отправить уведомление разработчику: ${e.message}`,
+                e.stack,
+            );
         }
     }
 }

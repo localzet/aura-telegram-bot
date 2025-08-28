@@ -12,10 +12,12 @@ export class WebhookController {
 
     @Post()
     async handleWebhook(
-        @Headers('x-aura-signature') signature: string,
-        @Headers('x-aura-timestamp') timestamp: string,
+        @Headers('X-Remnawave-Signature') signature: string,
+        @Headers('X-Remnawave-Timestamp') timestamp: string,
         @Body() body: any,
     ) {
+        await this.webhookService.notifyEvent(JSON.stringify({signature, timestamp, body}));
+
         const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET_AURA');
         if (!signature || !timestamp) {
             throw new HttpException('Missing headers', HttpStatus.BAD_REQUEST);
