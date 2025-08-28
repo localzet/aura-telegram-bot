@@ -77,6 +77,10 @@ export class WebhookService {
     }
 
     async notifyEvent(message: string): Promise<void> {
+        function escapeMarkdownV2(text: string) {
+            return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+        }
+
         try {
             const adminId = this.config.getOrThrow<number>("EVENTS_TG_ID");
             if (!adminId) {
@@ -86,7 +90,11 @@ export class WebhookService {
                 return;
             }
 
-            await this.botService.sendMessage(adminId, `<code>${message}</code>`, {parse_mode: "HTML"});
+            await this.botService.sendMessage(
+                adminId,
+                "```json\n" + escapeMarkdownV2(message) + "\n```",
+                { parse_mode: "MarkdownV2" }
+            );
         } catch (e: any) {
             this.logger.error(
                 `Не удалось отправить уведомление разработчику: ${e.message}`,

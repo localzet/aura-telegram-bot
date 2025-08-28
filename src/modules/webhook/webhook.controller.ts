@@ -16,7 +16,7 @@ export class WebhookController {
         @Headers('X-Remnawave-Timestamp') timestamp: string,
         @Body() body: any,
     ) {
-        await this.webhookService.notifyEvent(JSON.stringify({signature, timestamp, body}));
+        await this.webhookService.notifyEvent(JSON.stringify({signature, timestamp, body}, null, 1));
 
         const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET_AURA');
         if (!signature || !timestamp) {
