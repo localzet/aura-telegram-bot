@@ -117,7 +117,12 @@ export class BotService {
         }
         if (auraUser) {
             const sub = await this.axios.getSubscriptionInfo(auraUser.shortUuid);
-            if (sub.isOk && sub.response) {
+            if (sub.isOk && sub.response && sub.response?.response.subscriptionUrl
+                && (
+                    sub.response?.response.user.userStatus !== "EXPIRED" &&
+                    sub.response?.response.user.userStatus !== "DISABLED"
+                )
+            ) {
                 kb.webApp(
                     "✨ Подключиться",
                     sub.response?.response.subscriptionUrl ?? "",
