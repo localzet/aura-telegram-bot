@@ -51,8 +51,6 @@ export class BuyService {
                         .row()
                         .text("6 месяцев", "buy_plan_6")
                         .text("12 месяцев", "buy_plan_12")
-                        .row()
-                        .text("Назад", "back_to_main"),
                     parse_mode: "HTML",
                 },
             );
