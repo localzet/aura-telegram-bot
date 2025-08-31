@@ -35,8 +35,8 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
         },
     });
 
-    const referralBonus = Math.min(referredCountThisMonth * 5, 25);
-    const baseDiscount = (user.discount ?? 0) + (referral ? 5 : 0);
+    const referralBonus = Math.min(referredCountThisMonth * 5, 25); // + (referral && user.level == "ferrum" ? 5 : 0);
+    const baseDiscount = (user.discount ?? 0);
     let maxDiscount = 100;
     let persistDiscount = 0;
     let note = "";
@@ -52,7 +52,7 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
             break;
         case "aurum":
             persistDiscount = 50;
-            maxDiscount = 75;
+            maxDiscount = 50;
             break;
         case "platinum":
             persistDiscount = 100;
