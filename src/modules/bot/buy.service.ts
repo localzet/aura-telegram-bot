@@ -194,11 +194,14 @@ export class BuyService {
                 include: {inviter: true}
             });
             if (ref) {
-                await this.bot.api.sendMessage(
-                    ref.inviter.telegramId.toString(),
-                    `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
-                    {parse_mode: "HTML"},
-                );
+                const ps = await this.prisma.purchase.count({where: {userId: user.id}});
+                if (ps && ps == 1) {
+                    await this.bot.api.sendMessage(
+                        ref.inviter.telegramId.toString(),
+                        `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
+                        {parse_mode: "HTML"},
+                    );
+                }
             }
 
             const expireDate = auraUser?.expireAt
