@@ -122,12 +122,13 @@ export class UserService {
                 .filter(Boolean);
 
             const auraUser = await this.axios.createUser({
-                expireAt,
                 username: `tg_${tgUser.telegramId.toString()}`,
+                expireAt,
                 status: "ACTIVE",
+                tag: tgUser.level.toUpperCase(),
                 shortUuid: tgUser.id,
                 description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId.toString()}:${tgUser.id}`,
-                tag: tgUser.level.toUpperCase(),
+                trafficLimitStrategy: 'MONTH',
                 telegramId: Number(tgUser.telegramId),
                 activeInternalSquads,
             });
@@ -172,10 +173,12 @@ export class UserService {
             }
 
             const updated = await this.axios.updateUser({
-                expireAt,
                 uuid: auraUser.response.response.uuid,
-                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId.toString()}:${tgUser.id}`,
+                // status: "ACTIVE", // На всякий случай не обновляем
                 tag: tgUser.level.toUpperCase(),
+                description: `${tgUser.fullName} @${tgUser.username} id:${tgUser.telegramId.toString()}:${tgUser.id}`,
+                trafficLimitStrategy: 'MONTH',
+                expireAt,
                 telegramId: Number(tgUser.telegramId),
                 activeInternalSquads,
             });
