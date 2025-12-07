@@ -1,0 +1,9 @@
+node_modules
+admin-frontend/node_modules
+admin-frontend/dist
+dist
+.git
+.env
+*.log
+.DS_Store
+

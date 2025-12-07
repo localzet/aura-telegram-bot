@@ -1,14 +1,13 @@
 FROM node:22-alpine
 
-LABEL org.opencontainers.image.source = "https://github.com/localzet/aura-telegram-bot"
+LABEL org.opencontainers.image.source="https://github.com/localzet/aura-telegram-bot"
 
 WORKDIR /opt/app
 
 RUN npm install pm2 -g
 
 # Install backend dependencies
-COPY package*.json .
-
+COPY package*.json ./
 COPY tsconfig*.json ./
 
 RUN npm ci
@@ -17,9 +16,12 @@ COPY ./prisma ./prisma
 
 RUN npx prisma generate
 
-# Build backend
-COPY . .
+# Copy backend source (excluding admin-frontend)
+COPY src ./src
+COPY docker-entrypoint.sh ./
+COPY ecosystem.config.js ./
 
+# Build backend
 RUN npm run build
 
 # Build admin frontend
@@ -36,7 +38,7 @@ RUN npm run build
 # Move admin build to backend dist
 WORKDIR /opt/app
 
-RUN cp -r admin-frontend/dist admin
+RUN cp -r admin-frontend/dist dist/admin
 
 # Cleanup
 RUN rm -rf admin-frontend node_modules
