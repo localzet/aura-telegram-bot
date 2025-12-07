@@ -13,7 +13,6 @@ import {
     Stack,
     Title,
     Pagination,
-    Text,
 } from '@mantine/core';
 import { IconSearch, IconEdit, IconTrash } from '@tabler/icons-react';
 import { api } from '../api/client';
@@ -32,12 +31,10 @@ export function UsersPage() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const [opened, setOpened] = useState(false);
 
     const loadUsers = async () => {
-        setLoading(true);
         try {
             const response = await api.get('/admin/users', {
                 params: { page, limit: 50, search: search || undefined },
@@ -50,8 +47,6 @@ export function UsersPage() {
                 title: 'Ошибка',
                 message: error.response?.data?.message || 'Не удалось загрузить пользователей',
             });
-        } finally {
-            setLoading(false);
         }
     };
 

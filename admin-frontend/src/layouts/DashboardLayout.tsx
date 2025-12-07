@@ -1,8 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import {
     AppShell,
-    Navbar,
-    Header,
     Group,
     Button,
     Text,

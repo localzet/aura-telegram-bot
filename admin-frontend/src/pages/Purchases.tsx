@@ -3,17 +3,13 @@ import {
     Container,
     Table,
     Select,
-    Button,
     Group,
     Badge,
     ActionIcon,
-    Modal,
-    Stack,
     Title,
     Pagination,
-    TextInput,
 } from '@mantine/core';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
@@ -37,12 +33,8 @@ export function PurchasesPage() {
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [typeFilter, setTypeFilter] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [editingPurchase, setEditingPurchase] = useState<any>(null);
-    const [opened, setOpened] = useState(false);
 
     const loadPurchases = async () => {
-        setLoading(true);
         try {
             const response = await api.get('/admin/purchases', {
                 params: {
@@ -60,8 +52,6 @@ export function PurchasesPage() {
                 title: 'Ошибка',
                 message: error.response?.data?.message || 'Не удалось загрузить транзакции',
             });
-        } finally {
-            setLoading(false);
         }
     };
 

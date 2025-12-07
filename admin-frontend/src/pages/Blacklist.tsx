@@ -23,13 +23,11 @@ export function BlacklistPage() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [opened, setOpened] = useState(false);
     const [isNew, setIsNew] = useState(false);
 
     const loadBlacklist = async () => {
-        setLoading(true);
         try {
             const response = await api.get('/admin/blacklist', {
                 params: { page, limit: 50, search: search || undefined },
@@ -42,8 +40,6 @@ export function BlacklistPage() {
                 title: 'Ошибка',
                 message: error.response?.data?.message || 'Не удалось загрузить черный список',
             });
-        } finally {
-            setLoading(false);
         }
     };
 

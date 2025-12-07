@@ -6,15 +6,14 @@ import {
     Paper,
     Text,
     Stack,
-    DatePickerInput,
     Group,
     Button,
     Card,
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { BarChart, LineChart } from '@mantine/charts';
 import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
-import dayjs from 'dayjs';
 
 export function AnalyticsPage() {
     const [financialData, setFinancialData] = useState<any>(null);

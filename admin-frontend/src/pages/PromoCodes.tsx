@@ -13,8 +13,9 @@ import {
     Pagination,
     NumberInput,
     Switch,
-    DatePickerInput,
+    Text,
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { IconSearch, IconEdit, IconTrash, IconPlus } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
@@ -25,13 +26,11 @@ export function PromoCodesPage() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(false);
     const [editingCode, setEditingCode] = useState<any>(null);
     const [opened, setOpened] = useState(false);
     const [isNew, setIsNew] = useState(false);
 
     const loadPromoCodes = async () => {
-        setLoading(true);
         try {
             const response = await api.get('/admin/promocodes', {
                 params: { page, limit: 50, search: search || undefined },
@@ -44,8 +43,6 @@ export function PromoCodesPage() {
                 title: 'Ошибка',
                 message: error.response?.data?.message || 'Не удалось загрузить промокоды',
             });
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -244,7 +241,7 @@ export function PromoCodesPage() {
                         <DatePickerInput
                             label="Дата истечения"
                             value={editingCode.expiresAt ? new Date(editingCode.expiresAt) : null}
-                            onChange={(value) =>
+                            onChange={(value: Date | null) =>
                                 setEditingCode({
                                     ...editingCode,
                                     expiresAt: value ? value.toISOString() : null,
