@@ -241,7 +241,7 @@ export function PromoCodesPage() {
                         <DatePickerInput
                             label="Дата истечения"
                             value={editingCode.expiresAt ? new Date(editingCode.expiresAt) : null}
-                            onChange={(value) =>
+                            onChange={(value: Date | null) =>
                                 setEditingCode({
                                     ...editingCode,
                                     expiresAt: value ? value.toISOString() : null,

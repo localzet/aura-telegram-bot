@@ -93,13 +93,13 @@ export function AnalyticsPage() {
                 <DatePickerInput
                     label="Начало периода"
                     value={startDate}
-                    onChange={(value) => setStartDate(value)}
+                    onChange={(value: Date | null) => setStartDate(value)}
                     clearable
                 />
                 <DatePickerInput
                     label="Конец периода"
                     value={endDate}
-                    onChange={(value) => setEndDate(value)}
+                    onChange={(value: Date | null) => setEndDate(value)}
                     clearable
                 />
                 <Button onClick={loadAnalytics} loading={loading} mt="auto">
