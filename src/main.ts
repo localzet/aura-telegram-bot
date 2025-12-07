@@ -19,17 +19,24 @@ async function bootstrap() {
     // Serve admin panel static files
     const adminPath = join(__dirname, 'admin');
     try {
+        // Serve static assets (CSS, JS, images, etc.) from /admin/assets
         app.useStaticAssets(adminPath, {
             prefix: '/admin',
+            index: false,
         });
 
         // Serve admin panel index.html for all /admin routes (SPA routing)
-        app.use('/admin', (req: any, res: any, next: any) => {
-            if (!req.path.includes('.') && req.path.startsWith('/admin')) {
-                res.sendFile(join(adminPath, 'index.html'));
-            } else {
-                next();
+        app.get('/admin', (req: any, res: any) => {
+            res.sendFile(join(adminPath, 'index.html'));
+        });
+
+        app.get('/admin/*', (req: any, res: any, next: any) => {
+            // If it's a file request (has extension), let static assets handler deal with it
+            if (req.path.match(/\.[^/]+$/)) {
+                return next();
             }
+            // Otherwise serve index.html for SPA routing
+            res.sendFile(join(adminPath, 'index.html'));
         });
     } catch (error) {
         logger.warn('Admin panel static files not found, skipping...');

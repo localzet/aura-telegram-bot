@@ -38,7 +38,7 @@ export function App() {
     return (
         <MantineProvider theme={theme} defaultColorScheme="dark">
             <Notifications />
-            <BrowserRouter>
+            <BrowserRouter basename="/admin">
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route
