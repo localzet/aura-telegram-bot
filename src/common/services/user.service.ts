@@ -1,4 +1,4 @@
-import {Injectable, Logger} from "@nestjs/common";
+import {Injectable, Logger, ForbiddenException} from "@nestjs/common";
 import {AxiosService} from "@common/axios";
 import {PrismaService} from "@common/services/prisma.service";
 import {Context} from "grammy";
@@ -48,11 +48,42 @@ export class UserService {
 
         const {telegramId, username, fullName, language} = data;
 
-        return this.prisma.user.upsert({
+        // Check blacklist
+        const blacklisted = await this.prisma.blacklist.findFirst({
+            where: {
+                isActive: true,
+                OR: [
+                    { telegramId: BigInt(telegramId) },
+                    { auraId: { not: null } }, // Will be checked after auraId is set
+                ],
+            },
+        });
+
+        if (blacklisted && blacklisted.telegramId?.toString() === telegramId.toString()) {
+            throw new ForbiddenException("Доступ запрещен");
+        }
+
+        const user = await this.prisma.user.upsert({
             where: {telegramId: BigInt(telegramId)},
             create: {telegramId: BigInt(telegramId), username, fullName, language},
             update: {username, fullName, language},
         });
+
+        // Check blacklist by auraId if user has one
+        if (user.auraId) {
+            const blacklistedByAura = await this.prisma.blacklist.findFirst({
+                where: {
+                    isActive: true,
+                    auraId: user.auraId,
+                },
+            });
+
+            if (blacklistedByAura) {
+                throw new ForbiddenException("Доступ запрещен");
+            }
+        }
+
+        return user;
     }
 
     async getAuraUser(

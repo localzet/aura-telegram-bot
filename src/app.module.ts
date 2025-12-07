@@ -10,6 +10,7 @@ import {BotName} from "@modules/bot/bot.constants";
 import {PrismaService} from "@common/services/prisma.service";
 import {UserService} from "@common/services/user.service";
 import {WebhookModule} from "@modules/webhook/webhook.module";
+import {AdminModule} from "@modules/admin/admin.module";
 
 const logger = new Logger("bot:app.module");
 
@@ -32,6 +33,7 @@ const logger = new Logger("bot:app.module");
         }),
         BotModule,
         WebhookModule,
+        AdminModule,
         AxiosModule,
     ],
     providers: [PrismaService, UserService],

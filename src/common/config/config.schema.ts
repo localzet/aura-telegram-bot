@@ -15,6 +15,13 @@ export const configSchema = z
         TELEGRAM_TOKEN: z.string(),
         YOOKASSA_TOKEN: z.string(),
         MINI_APP_URL: z.optional(z.string()),
+        
+        ADMIN_PORT: z
+            .string()
+            .default('3001')
+            .transform((port) => parseInt(port, 10)),
+        ADMIN_USERNAME: z.string().default('admin'),
+        ADMIN_PASSWORD: z.string().default('admin'),
     })
     .superRefine((data, ctx) => {
         if (

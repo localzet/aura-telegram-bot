@@ -80,10 +80,43 @@ model Purchase {
 
   telegramId String?
   yookasaId  String?
+  promoCodeId String?
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id])
+}
+
+model PromoCode {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  discount    Int       @default(0)
+  maxUses     Int?
+  usedCount   Int       @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  purchases   Purchase[]
+}
+
+model Blacklist {
+  id          String    @id @default(uuid())
+  telegramId  BigInt?   @unique
+  auraId      String?   @unique
+  reason      String?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  
+  @@index([telegramId])
+  @@index([auraId])
 }
