@@ -1,5 +1,5 @@
 import {ChatType, Command, Ctx, InjectBot, Start, Update,} from "@localzet/grammy-nestjs";
-import {UseFilters, UseGuards, UseInterceptors} from "@nestjs/common";
+import {Logger, UseFilters, UseGuards, UseInterceptors} from "@nestjs/common";
 import debug from "debug";
 import {Bot, Context, InlineKeyboard} from "grammy";
 
@@ -12,6 +12,7 @@ import {UserService} from "@common/services/user.service";
 import {ConfigService} from "@nestjs/config";
 import {AdminGuard} from "@common/guards";
 import {AxiosService} from "@common/axios";
+import {User} from "@prisma/client";
 
 const log = debug("bot:main");
 
@@ -19,6 +20,8 @@ const log = debug("bot:main");
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(GrammyExceptionFilter)
 export class BotService {
+    private readonly logger = new Logger(BotService.name);
+
     constructor(
         @InjectBot(BotName)
         private readonly bot: Bot<Context>,
@@ -92,19 +95,31 @@ export class BotService {
         }
 
         const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
+        const isNewUser = !exists;
+        
         if (inviter) {
             const existing = await this.prisma.referral.findUnique({
                 where: {invitedId: user.id},
             });
             if (!existing) {
-                await this.prisma.referral.create({
-                    data: {
-                        inviterId: inviter.id,
-                        invitedId: user.id,
-                    },
+                // Используем транзакцию для создания реферала
+                await this.prisma.$transaction(async (tx) => {
+                    await tx.referral.create({
+                        data: {
+                            inviterId: inviter.id,
+                            invitedId: user.id,
+                        },
+                    });
                 });
                 log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
             }
+        }
+
+        // Уведомление о новом пользователе (асинхронно, не блокирует ответ)
+        if (isNewUser) {
+            this.notifyNewUser(user, inviter || undefined).catch((err) => {
+                this.logger.warn(`Не удалось отправить уведомление о новом пользователе: ${err.message}`);
+            });
         }
 
         const kb = new InlineKeyboard()
@@ -206,5 +221,36 @@ export class BotService {
 
     async handleUpdate(body: any) {
         await this.bot.handleUpdate(body);
+    }
+
+    private async notifyNewUser(user: User, inviter?: User): Promise<void> {
+        try {
+            const adminId = this.config.get<number>("ADMIN_TG_ID");
+            if (!adminId) {
+                this.logger.warn(
+                    "ADMIN_TG_ID не задан в конфиге, уведомление о новом пользователе не отправлено",
+                );
+                return;
+            }
+
+            const userInfo = `${user.fullName || 'Без имени'} (@${user.username || 'без username'}, ID: ${user.telegramId})`;
+            const inviterInfo = inviter 
+                ? `\n👥 Приглашен пользователем: <b>${inviter.fullName || inviter.username || inviter.telegramId.toString()}</b> (ID: ${inviter.telegramId})`
+                : '';
+            
+            const notification = `🆕 Новый пользователь
+
+👤 Пользователь: <b>${userInfo}</b>
+📅 Уровень: ${prettyLevel(user.level)}
+🌐 Язык: ${user.language}${inviterInfo}
+🆔 User ID: <code>${user.id}</code>`;
+
+            await this.bot.api.sendMessage(adminId, notification, {parse_mode: "HTML"});
+        } catch (e: any) {
+            this.logger.error(
+                `Не удалось отправить уведомление о новом пользователе: ${e.message}`,
+                e.stack,
+            );
+        }
     }
 }

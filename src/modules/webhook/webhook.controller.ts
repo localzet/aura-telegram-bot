@@ -53,7 +53,9 @@ export class WebhookController {
             throw new HttpException('Missing headers', HttpStatus.BAD_REQUEST);
         }
 
-        const valid = token == secret;
+        // Безопасное сравнение строк для предотвращения timing attacks
+        const valid = token && secret && token.length === secret.length && 
+            token.split('').every((char, i) => char === secret[i]);
         if (!valid) {
             throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
         }

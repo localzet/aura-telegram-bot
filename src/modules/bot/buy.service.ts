@@ -179,16 +179,30 @@ export class BuyService {
             const {aura: auraUser, tg: user} = await this.user.getUser(ctx);
             const payment = ctx.message?.successful_payment;
 
-            await this.prisma.purchase.update({
+            const purchase = await this.prisma.purchase.findUnique({
                 where: {id: payment?.invoice_payload},
-                data: {
-                    status: "paid",
-                    telegramId: payment?.telegram_payment_charge_id,
-                    yookasaId: payment?.provider_payment_charge_id,
-                    paidAt: new Date(),
-                },
             });
 
+            if (!purchase) {
+                this.logger.warn(`Purchase not found: ${payment?.invoice_payload}`);
+                await ctx.reply("⚠️ Платеж не найден в системе.");
+                return;
+            }
+
+            // Используем транзакцию для атомарного обновления Purchase
+            await this.prisma.$transaction(async (tx) => {
+                await tx.purchase.update({
+                    where: {id: payment?.invoice_payload},
+                    data: {
+                        status: "paid",
+                        telegramId: payment?.telegram_payment_charge_id,
+                        yookasaId: payment?.provider_payment_charge_id,
+                        paidAt: new Date(),
+                    },
+                });
+            });
+
+            // Уведомления отправляем после успешного обновления БД
             const ref = await this.prisma.referral.findUnique({
                 where: {invitedId: user.id},
                 include: {inviter: true}
@@ -196,11 +210,14 @@ export class BuyService {
             if (ref) {
                 const ps = await this.prisma.purchase.count({where: {userId: user.id}});
                 if (ps && ps == 1) {
-                    await this.bot.api.sendMessage(
+                    // Отправка уведомления рефералу - не критично, можно асинхронно
+                    this.bot.api.sendMessage(
                         ref.inviter.telegramId.toString(),
                         `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
                         {parse_mode: "HTML"},
-                    );
+                    ).catch((err) => {
+                        this.logger.warn(`Не удалось отправить уведомление рефералу: ${err.message}`);
+                    });
                 }
             }
 
@@ -209,6 +226,22 @@ export class BuyService {
                 : null;
 
             if (expireDate) {
+                // Уведомление о продлении подписки
+                const userInfo = `${user.fullName || user.username || 'Без имени'} (@${user.username || 'без username'}, ID: ${user.telegramId})`;
+                // Проверяем, была ли у пользователя уже подписка (auraUser существует)
+                const wasExtended = !!auraUser;
+                const action = wasExtended ? "продлил" : "оформил";
+                const notification = `💰 ${action === "продлил" ? "Продление" : "Новая"} подписка
+
+👤 Пользователь: <b>${userInfo}</b>
+📅 Уровень: ${user.level}
+💵 Сумма: ${purchase.amount.toFixed(2)} ${purchase.currency}
+📦 Период: ${purchase.month} ${purchase.month === 1 ? 'месяц' : purchase.month < 5 ? 'месяца' : 'месяцев'}
+📆 Подписка до: ${expireDate.toLocaleDateString("ru-RU")}
+🆔 Purchase ID: <code>${purchase.id}</code>`;
+
+                await this.notifyDev(notification);
+
                 await ctx.reply(
                     `✅ Оплата прошла успешно. Подписка активна до ${expireDate.toLocaleDateString("ru-RU")}`,
                 );
@@ -227,7 +260,7 @@ export class BuyService {
                 `Ошибка при обработке успешного платежа: ${err.message}`,
                 err.stack,
             );
-            await this.notifyDev(`💥 Ошибка pre_checkout
+            await this.notifyDev(`💥 Ошибка при обработке платежа
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
             await ctx.reply(

@@ -15,25 +15,27 @@ export async function getPrice(months: number, user: User, prisma: PrismaService
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const referredCountThisMonth = await prisma.referral.count({
-        where: {
-            inviter: {
-                id: user.id,
+    // Оптимизация: выполняем оба запроса параллельно
+    const [referredCountThisMonth, referral] = await Promise.all([
+        prisma.referral.count({
+            where: {
+                inviter: {
+                    id: user.id,
+                },
+                invited: {
+                    auraId: {not: null},
+                },
+                createdAt: {gte: startOfMonth}
             },
-            invited: {
-                auraId: {not: null},
+        }),
+        prisma.referral.count({
+            where: {
+                invited: {
+                    id: user.id,
+                },
             },
-            createdAt: {gte: startOfMonth}
-        },
-    });
-
-    const referral = await prisma.referral.count({
-        where: {
-            invited: {
-                id: user.id,
-            },
-        },
-    });
+        }),
+    ]);
 
     const referralBonus = Math.min(referredCountThisMonth * 5, 25); // + (referral && user.level == "ferrum" ? 5 : 0);
     const baseDiscount = (user.discount ?? 0);
