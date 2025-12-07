@@ -29,7 +29,7 @@ WORKDIR /opt/app/admin-frontend
 
 COPY admin-frontend/package*.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY admin-frontend .
 
