@@ -26,12 +26,14 @@ ADMIN_PORT=3001
 ### Запуск в разработке
 
 1. Установите зависимости админки:
+
 ```bash
 cd admin-frontend
 npm install
 ```
 
 2. Запустите frontend в режиме разработки:
+
 ```bash
 npm run dev
 ```
@@ -62,4 +64,3 @@ http://localhost:3000/admin
 - `GET /admin/blacklist` - черный список
 
 Полный список endpoints см. в `src/modules/admin/admin.controller.ts`
-
