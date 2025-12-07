@@ -241,12 +241,13 @@ export function PromoCodesPage() {
                         <DatePickerInput
                             label="Дата истечения"
                             value={editingCode.expiresAt ? new Date(editingCode.expiresAt) : null}
-                            onChange={(value: Date | null) =>
+                            onChange={(value) => {
+                                const dateValue = value as Date | null;
                                 setEditingCode({
                                     ...editingCode,
-                                    expiresAt: value ? value.toISOString() : null,
-                                })
-                            }
+                                    expiresAt: dateValue ? dateValue.toISOString() : null,
+                                });
+                            }}
                             clearable
                         />
                         <TextInput
