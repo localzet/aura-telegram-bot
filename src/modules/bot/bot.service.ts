@@ -1,18 +1,25 @@
-import {ChatType, Command, Ctx, InjectBot, Start, Update,} from "@localzet/grammy-nestjs";
-import {Logger, UseFilters, UseGuards, UseInterceptors} from "@nestjs/common";
+import {
+  ChatType,
+  Command,
+  Ctx,
+  InjectBot,
+  Start,
+  Update,
+} from "@localzet/grammy-nestjs";
+import { Logger, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import debug from "debug";
-import {Bot, Context, InlineKeyboard} from "grammy";
+import { Bot, Context, InlineKeyboard } from "grammy";
 
-import {BotName} from "@modules/bot/bot.constants";
-import {ResponseTimeInterceptor} from "@common/interceptors";
-import {GrammyExceptionFilter} from "@common/filters";
-import {PrismaService} from "@common/services/prisma.service";
-import {formatExpire, prettyLevel} from "@common/utils";
-import {UserService} from "@common/services/user.service";
-import {ConfigService} from "@nestjs/config";
-import {AdminGuard} from "@common/guards";
-import {AxiosService} from "@common/axios";
-import {User} from "@prisma/client";
+import { BotName } from "@modules/bot/bot.constants";
+import { ResponseTimeInterceptor } from "@common/interceptors";
+import { GrammyExceptionFilter } from "@common/filters";
+import { PrismaService } from "@common/services/prisma.service";
+import { formatExpire, prettyLevel } from "@common/utils";
+import { UserService } from "@common/services/user.service";
+import { ConfigService } from "@nestjs/config";
+import { AdminGuard } from "@common/guards";
+import { AxiosService } from "@common/axios";
+import { User } from "@prisma/client";
 
 const log = debug("bot:main");
 
@@ -20,237 +27,247 @@ const log = debug("bot:main");
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(GrammyExceptionFilter)
 export class BotService {
-    private readonly logger = new Logger(BotService.name);
+  private readonly logger = new Logger(BotService.name);
 
-    constructor(
-        @InjectBot(BotName)
-        private readonly bot: Bot<Context>,
-        private prisma: PrismaService,
-        private user: UserService,
-        private config: ConfigService,
-        private readonly axios: AxiosService,
-    ) {
-        log(
-            "Initializing bot, status:",
-            bot.isInited() ? bot.botInfo.first_name : "(pending)",
-        );
+  constructor(
+    @InjectBot(BotName)
+    private readonly bot: Bot<Context>,
+    private prisma: PrismaService,
+    private user: UserService,
+    private config: ConfigService,
+    private readonly axios: AxiosService,
+  ) {
+    log(
+      "Initializing bot, status:",
+      bot.isInited() ? bot.botInfo.first_name : "(pending)",
+    );
+  }
+
+  @Start()
+  @ChatType("private")
+  async onStart(@Ctx() ctx: Context): Promise<any> {
+    const msg = ctx.message;
+    if (!msg) {
+      log("onStart: no message in context");
+      return;
     }
 
-    @Start()
-    @ChatType("private")
-    async onStart(@Ctx() ctx: Context): Promise<any> {
-        const msg = ctx.message;
-        if (!msg) {
-            log("onStart: no message in context");
-            return;
+    const telegramId = msg.chat.id;
+    if (!telegramId) {
+      log("onStart: no telegramId");
+      return;
+    }
+
+    const text = msg.text ?? "";
+    const [, payload] =
+      text.startsWith("/start") || text.startsWith("start")
+        ? text.split(" ")
+        : [undefined, text];
+
+    log(`onStart: telegramId=${telegramId}, payload=${payload}`);
+
+    const exists = await this.prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+    });
+    let inviter = undefined;
+    if (!exists) {
+      if (payload?.startsWith("ref_")) {
+        const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
+        if (
+          !isNaN(inviterTelegramId) &&
+          inviterTelegramId !== Number(telegramId)
+        ) {
+          inviter = await this.prisma.user.findUnique({
+            where: { telegramId: BigInt(inviterTelegramId) },
+          });
         }
-
-        const telegramId = msg.chat.id;
-        if (!telegramId) {
-            log("onStart: no telegramId");
-            return;
-        }
-
-        const text = msg.text ?? "";
-        const [, payload] =
-            text.startsWith("/start") || text.startsWith("start")
-                ? text.split(" ")
-                : [undefined, text];
-
-        log(`onStart: telegramId=${telegramId}, payload=${payload}`);
-
-        const exists = await this.prisma.user.findUnique({where: {telegramId: BigInt(telegramId)}});
-        let inviter = undefined;
-        if (!exists) {
-            if (payload?.startsWith("ref_")) {
-                const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
-                if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
-                    inviter = await this.prisma.user.findUnique({
-                        where: {telegramId: BigInt(inviterTelegramId)},
-                    });
-                }
-            }
-            // if (!inviter) {
-            //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
-            //     return;
-            // }
-        } else {
-            const existingReferral = await this.prisma.referral.findUnique({
-                where: {invitedId: exists.id},
+      }
+      // if (!inviter) {
+      //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
+      //     return;
+      // }
+    } else {
+      const existingReferral = await this.prisma.referral.findUnique({
+        where: { invitedId: exists.id },
+      });
+      if (!existingReferral) {
+        if (payload?.startsWith("ref_")) {
+          const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
+          if (
+            !isNaN(inviterTelegramId) &&
+            inviterTelegramId !== Number(telegramId)
+          ) {
+            inviter = await this.prisma.user.findUnique({
+              where: { telegramId: BigInt(inviterTelegramId) },
             });
-            if (!existingReferral) {
-                if (payload?.startsWith("ref_")) {
-                    const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
-                    if (!isNaN(inviterTelegramId) && inviterTelegramId !== Number(telegramId)) {
-                        inviter = await this.prisma.user.findUnique({
-                            where: {telegramId: BigInt(inviterTelegramId)},
-                        });
-                    }
-                }
-                // if (!inviter) {
-                //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
-                //     return;
-                // }
-            }
+          }
         }
+        // if (!inviter) {
+        //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
+        //     return;
+        // }
+      }
+    }
 
-        const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
-        const isNewUser = !exists;
-        
-        if (inviter) {
-            const existing = await this.prisma.referral.findUnique({
-                where: {invitedId: user.id},
-            });
-            if (!existing) {
-                // Используем транзакцию для создания реферала
-                await this.prisma.$transaction(async (tx) => {
-                    await tx.referral.create({
-                        data: {
-                            inviterId: inviter.id,
-                            invitedId: user.id,
-                        },
-                    });
-                });
-                log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
-            }
-        }
+    const { tg: user, aura: auraUser } = await this.user.getUser(ctx);
+    const isNewUser = !exists;
 
-        // Уведомление о новом пользователе (асинхронно, не блокирует ответ)
-        if (isNewUser) {
-            this.notifyNewUser(user, inviter || undefined).catch((err) => {
-                this.logger.warn(`Не удалось отправить уведомление о новом пользователе: ${err.message}`);
-            });
-        }
+    if (inviter) {
+      const existing = await this.prisma.referral.findUnique({
+        where: { invitedId: user.id },
+      });
+      if (!existing) {
+        // Используем транзакцию для создания реферала
+        await this.prisma.$transaction(async (tx) => {
+          await tx.referral.create({
+            data: {
+              inviterId: inviter.id,
+              invitedId: user.id,
+            },
+          });
+        });
+        log(`Referral recorded: inviterId=${inviter.id}, invitedId=${user.id}`);
+      }
+    }
 
-        const kb = new InlineKeyboard()
+    // Уведомление о новом пользователе (асинхронно, не блокирует ответ)
+    if (isNewUser) {
+      this.notifyNewUser(user, inviter || undefined).catch((err) => {
+        this.logger.warn(
+          `Не удалось отправить уведомление о новом пользователе: ${err.message}`,
+        );
+      });
+    }
 
-        if (user.level !== 'platinum') {
-            kb.text(
-                `📦 ${user.auraId ? "Продлить" : "Купить"}`,
-                "buy",
-            );
-        }
-        if (auraUser) {
-            const sub = await this.axios.getSubscriptionInfo(auraUser.shortUuid);
-            if (sub.isOk && sub.response && sub.response?.response.subscriptionUrl
-                && (
-                    sub.response?.response.user.userStatus !== "EXPIRED" &&
-                    sub.response?.response.user.userStatus !== "DISABLED"
-                )
-            ) {
-                kb.webApp(
-                    "✨ Подключиться",
-                    sub.response?.response.subscriptionUrl ?? "",
-                );
-            }
-        }
-        kb.row().text("👥 Пригласить друга", "ref");
+    const kb = new InlineKeyboard();
 
-        await ctx.reply(
-            `👋 Добро пожаловать, ${user.fullName || "пользователь"}!
+    if (user.level !== "platinum") {
+      kb.text(`📦 ${user.auraId ? "Продлить" : "Купить"}`, "buy");
+    }
+    if (auraUser) {
+      const sub = await this.axios.getSubscriptionInfo(auraUser.shortUuid);
+      if (
+        sub.isOk &&
+        sub.response &&
+        sub.response?.response.subscriptionUrl &&
+        sub.response?.response.user.userStatus !== "EXPIRED" &&
+        sub.response?.response.user.userStatus !== "DISABLED"
+      ) {
+        kb.webApp(
+          "✨ Подключиться",
+          sub.response?.response.subscriptionUrl ?? "",
+        );
+      }
+    }
+    kb.row().text("👥 Пригласить друга", "ref");
+
+    await ctx.reply(
+      `👋 Добро пожаловать, ${user.fullName || "пользователь"}!
         
 🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
 ⏳ Подписка:<code> ${auraUser?.expireAt ? formatExpire(auraUser.expireAt) : "не активна"}</code>
         
 Выберите действие:`,
-            {
-                parse_mode: "HTML",
-                reply_markup: kb,
-            },
+      {
+        parse_mode: "HTML",
+        reply_markup: kb,
+      },
+    );
+
+    log(`onStart: greeting sent to ${telegramId}`);
+  }
+
+  async sendMessage(
+    chatId: string | number,
+    text: string,
+    other?: any | undefined,
+  ) {
+    return this.bot.api.sendMessage(chatId, text, other);
+  }
+
+  @Command("help")
+  @ChatType("private")
+  async onHelp(@Ctx() ctx: Context): Promise<any> {
+    const msg = ctx.message?.text ?? "";
+    const args = msg.split(" ").slice(1).join(" ").trim();
+
+    if (!args) {
+      return ctx.reply(
+        "📖 Вы можете написать разработчикам через команду:\n" +
+          "<code>/help ваш_текст</code>\n\n" +
+          "Пример:\n<code>/help Не работает оплата</code>",
+        { parse_mode: "HTML" },
+      );
+    }
+
+    const helpChatId = this.config.getOrThrow<number>("ADMIN_TG_ID");
+
+    await this.bot.api.sendMessage(
+      helpChatId,
+      "📨 Сообщение от пользователя:\n" +
+        `ID: <code>${ctx.from?.id}</code>\n` +
+        `Имя: ${ctx.from?.first_name || ""} ${ctx.from?.last_name || ""}\n` +
+        (ctx.from?.username ? `@${ctx.from.username}\n` : "") +
+        `\n${args}`,
+      { parse_mode: "HTML" },
+    );
+    return ctx.reply("✅ Ваше сообщение отправлено разработчикам.");
+  }
+
+  @Command("reply")
+  @UseGuards(AdminGuard)
+  async onReply(@Ctx() ctx: Context): Promise<any> {
+    const msg = ctx.message?.text ?? "";
+    const parts = msg.split(" ").slice(1);
+    const userId = Number(parts.shift());
+    const replyText = parts.join(" ").trim();
+
+    if (!userId || !replyText) {
+      return ctx.reply("Использование: /reply <user_id> <текст>");
+    }
+
+    try {
+      await this.bot.api.sendMessage(userId!, replyText);
+      return ctx.reply("✅ Сообщение отправлено пользователю.");
+    } catch (e) {
+      return ctx.reply(`⚠️ Не удалось отправить сообщение: ${e}`);
+    }
+  }
+
+  async handleUpdate(body: any) {
+    await this.bot.handleUpdate(body);
+  }
+
+  private async notifyNewUser(user: User, inviter?: User): Promise<void> {
+    try {
+      const adminId = this.config.get<number>("ADMIN_TG_ID");
+      if (!adminId) {
+        this.logger.warn(
+          "ADMIN_TG_ID не задан в конфиге, уведомление о новом пользователе не отправлено",
         );
+        return;
+      }
 
-        log(`onStart: greeting sent to ${telegramId}`);
-    }
+      const userInfo = `${user.fullName || "Без имени"} (@${user.username || "без username"}, ID: ${user.telegramId})`;
+      const inviterInfo = inviter
+        ? `\n👥 Приглашен пользователем: <b>${inviter.fullName || inviter.username || inviter.telegramId.toString()}</b> (ID: ${inviter.telegramId})`
+        : "";
 
-    async sendMessage(
-        chatId: string | number,
-        text: string,
-        other?: any | undefined,
-    ) {
-        return this.bot.api.sendMessage(chatId, text, other);
-    }
-
-    @Command("help")
-    @ChatType("private")
-    async onHelp(@Ctx() ctx: Context): Promise<any> {
-        const msg = ctx.message?.text ?? "";
-        const args = msg.split(" ").slice(1).join(" ").trim();
-
-        if (!args) {
-            return ctx.reply(
-                "📖 Вы можете написать разработчикам через команду:\n" +
-                "<code>/help ваш_текст</code>\n\n" +
-                "Пример:\n<code>/help Не работает оплата</code>",
-                {parse_mode: "HTML"},
-            );
-        }
-
-        const helpChatId = this.config.getOrThrow<number>("ADMIN_TG_ID");
-
-        await this.bot.api.sendMessage(
-            helpChatId,
-            "📨 Сообщение от пользователя:\n" +
-            `ID: <code>${ctx.from?.id}</code>\n` +
-            `Имя: ${ctx.from?.first_name || ""} ${ctx.from?.last_name || ""}\n` +
-            (ctx.from?.username ? `@${ctx.from.username}\n` : "") +
-            `\n${args}`,
-            {parse_mode: "HTML"},
-        );
-        return ctx.reply("✅ Ваше сообщение отправлено разработчикам.");
-    }
-
-    @Command("reply")
-    @UseGuards(AdminGuard)
-    async onReply(@Ctx() ctx: Context): Promise<any> {
-        const msg = ctx.message?.text ?? "";
-        const parts = msg.split(" ").slice(1);
-        const userId = Number(parts.shift());
-        const replyText = parts.join(" ").trim();
-
-        if (!userId || !replyText) {
-            return ctx.reply("Использование: /reply <user_id> <текст>");
-        }
-
-        try {
-            await this.bot.api.sendMessage(userId!, replyText);
-            return ctx.reply("✅ Сообщение отправлено пользователю.");
-        } catch (e) {
-            return ctx.reply(`⚠️ Не удалось отправить сообщение: ${e}`);
-        }
-    }
-
-    async handleUpdate(body: any) {
-        await this.bot.handleUpdate(body);
-    }
-
-    private async notifyNewUser(user: User, inviter?: User): Promise<void> {
-        try {
-            const adminId = this.config.get<number>("ADMIN_TG_ID");
-            if (!adminId) {
-                this.logger.warn(
-                    "ADMIN_TG_ID не задан в конфиге, уведомление о новом пользователе не отправлено",
-                );
-                return;
-            }
-
-            const userInfo = `${user.fullName || 'Без имени'} (@${user.username || 'без username'}, ID: ${user.telegramId})`;
-            const inviterInfo = inviter 
-                ? `\n👥 Приглашен пользователем: <b>${inviter.fullName || inviter.username || inviter.telegramId.toString()}</b> (ID: ${inviter.telegramId})`
-                : '';
-            
-            const notification = `🆕 Новый пользователь
+      const notification = `🆕 Новый пользователь
 
 👤 Пользователь: <b>${userInfo}</b>
 📅 Уровень: ${prettyLevel(user.level)}
 🌐 Язык: ${user.language}${inviterInfo}
 🆔 User ID: <code>${user.id}</code>`;
 
-            await this.bot.api.sendMessage(adminId, notification, {parse_mode: "HTML"});
-        } catch (e: any) {
-            this.logger.error(
-                `Не удалось отправить уведомление о новом пользователе: ${e.message}`,
-                e.stack,
-            );
-        }
+      await this.bot.api.sendMessage(adminId, notification, {
+        parse_mode: "HTML",
+      });
+    } catch (e: any) {
+      this.logger.error(
+        `Не удалось отправить уведомление о новом пользователе: ${e.message}`,
+        e.stack,
+      );
     }
+  }
 }

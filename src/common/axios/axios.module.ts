@@ -1,11 +1,11 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module } from "@nestjs/common";
 
-import { AxiosService } from './axios.service';
+import { AxiosService } from "./axios.service";
 
 @Global()
 @Module({
-    imports: [],
-    providers: [AxiosService],
-    exports: [AxiosService],
+  imports: [],
+  providers: [AxiosService],
+  exports: [AxiosService],
 })
 export class AxiosModule {}
