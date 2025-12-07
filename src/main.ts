@@ -25,12 +25,15 @@ async function bootstrap() {
             index: false,
         });
 
+        // Get Express instance for custom routing
+        const expressApp = app.getHttpAdapter().getInstance();
+        
         // Serve admin panel index.html for all /admin routes (SPA routing)
-        app.get('/admin', (req: any, res: any) => {
+        expressApp.get('/admin', (req: any, res: any) => {
             res.sendFile(join(adminPath, 'index.html'));
         });
 
-        app.get('/admin/*', (req: any, res: any, next: any) => {
+        expressApp.get('/admin/*', (req: any, res: any, next: any) => {
             // If it's a file request (has extension), let static assets handler deal with it
             if (req.path.match(/\.[^/]+$/)) {
                 return next();
