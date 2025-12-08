@@ -70,9 +70,10 @@ export class PromoService {
             // Применение промокода
             if (validation.type === "level" && validation.level) {
                 // Назначение уровня
+                const assignedLevel = validation.level;
                 await this.prisma.user.update({
                     where: { id: user.id },
-                    data: { level: validation.level as any },
+                    data: { level: assignedLevel },
                 });
 
                 // Обновление счетчика использования
@@ -89,7 +90,7 @@ export class PromoService {
 
                 await ctx.reply(
                     this.i18n.t(ctx, "promo_level_granted", {
-                        level: prettyLevel(validation.level),
+                        level: prettyLevel(assignedLevel),
                     }),
                 );
             } else if (validation.type === "discount" && validation.discount) {

@@ -63,7 +63,7 @@ export class AdminConfigService {
             }
         }
         if (config.levels) {
-            Object.entries(config.levels).forEach(([level, levelConfig]) => {
+            for (const [level, levelConfig] of Object.entries(config.levels)) {
                 if (levelConfig.persistDiscount !== undefined) {
                     await this.updateConfig(
                         `LEVEL_${level.toUpperCase()}_DISCOUNT`,
@@ -80,7 +80,7 @@ export class AdminConfigService {
                         updatedBy,
                     );
                 }
-            });
+            }
         }
         if (config.referral) {
             if (config.referral.bonusPercent !== undefined) {
