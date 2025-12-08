@@ -209,7 +209,26 @@ export function ReferralsPage() {
                                 `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                             }
                             nodeColor={(node) => getLevelColor(node.level)}
-                            nodeVal={() => 8}
+                            nodeVal={() => 12}
+                            nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                                const label = node.username || node.telegramId?.toString() || node.id;
+                                const fontSize = Math.max(8, 12 / globalScale);
+                                ctx.font = `bold ${fontSize}px Sans-Serif`;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillStyle = '#fff';
+                                const bckgDimensions = ctx.measureText(label);
+                                const bckgPadding = 2;
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                                ctx.fillRect(
+                                    node.x - bckgDimensions.width / 2 - bckgPadding,
+                                    node.y - fontSize / 2 - bckgPadding + (node.__size || 12) + 4,
+                                    bckgDimensions.width + bckgPadding * 2,
+                                    fontSize + bckgPadding * 2
+                                );
+                                ctx.fillStyle = '#fff';
+                                ctx.fillText(label, node.x, node.y + (node.__size || 12) + 4);
+                            }}
                             linkDirectionalArrowLength={6}
                             linkDirectionalArrowRelPos={1}
                             linkWidth={2}
