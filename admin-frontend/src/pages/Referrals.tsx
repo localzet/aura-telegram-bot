@@ -13,11 +13,15 @@ import {
     Button,
     Loader,
     Center,
+    Modal,
+    SegmentedControl,
 } from '@mantine/core';
-import { IconNetwork, IconUsers, IconChartBar } from '@tabler/icons-react';
+import { IconNetwork, IconUsers, IconChartBar, IconMaximize, IconMinimize } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
 import ForceGraph2D from 'react-force-graph-2d';
+import ForceGraph3D from 'react-force-graph-3d';
+import * as THREE from 'three';
 
 interface Node {
     id: string;
@@ -44,6 +48,8 @@ export function ReferralsPage() {
     const [depth, setDepth] = useState(3);
     const [loading, setLoading] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
+    const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+    const [fullscreen, setFullscreen] = useState(false);
 
     const loadUsers = async () => {
         try {
@@ -180,6 +186,21 @@ export function ReferralsPage() {
                             max={10}
                             style={{ width: 120 }}
                         />
+                        <SegmentedControl
+                            value={viewMode}
+                            onChange={(value) => setViewMode(value as '2d' | '3d')}
+                            data={[
+                                { label: '2D', value: '2d' },
+                                { label: '3D', value: '3d' },
+                            ]}
+                        />
+                        <Button
+                            leftSection={fullscreen ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
+                            onClick={() => setFullscreen(!fullscreen)}
+                            variant="light"
+                        >
+                            {fullscreen ? 'Свернуть' : 'На весь экран'}
+                        </Button>
                         <Button onClick={loadNetwork} mt="auto" loading={loading}>
                             Обновить
                         </Button>
@@ -188,70 +209,261 @@ export function ReferralsPage() {
             </Paper>
 
             {network && network.nodes.length > 0 ? (
-                <Paper p="md" withBorder>
-                    <Text fw={700} mb="md">
-                        Граф реферальной сети ({network.nodes.length} узлов, {network.edges.length} связей)
-                    </Text>
-                    <div style={{ border: '1px solid #373a40', borderRadius: '8px', overflow: 'hidden' }}>
-                        <ForceGraph2D
-                            graphData={{
-                                nodes: network.nodes.map((n) => ({
-                                    ...n,
-                                    color: getLevelColor(n.level),
-                                })),
-                                links: network.edges.map((e) => ({
-                                    source: e.from,
-                                    target: e.to,
-                                    id: e.id,
-                                })),
-                            }}
-                            nodeLabel={(node) =>
-                                `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
-                            }
-                            nodeColor={(node) => getLevelColor(node.level)}
-                            nodeVal={() => 12}
-                            nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-                                const label = node.username || node.telegramId?.toString() || node.id;
-                                const fontSize = Math.max(8, 12 / globalScale);
-                                ctx.font = `bold ${fontSize}px Sans-Serif`;
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillStyle = '#fff';
-                                const bckgDimensions = ctx.measureText(label);
-                                const bckgPadding = 2;
-                                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                                ctx.fillRect(
-                                    node.x - bckgDimensions.width / 2 - bckgPadding,
-                                    node.y - fontSize / 2 - bckgPadding + (node.__size || 12) + 4,
-                                    bckgDimensions.width + bckgPadding * 2,
-                                    fontSize + bckgPadding * 2
-                                );
-                                ctx.fillStyle = '#fff';
-                                ctx.fillText(label, node.x, node.y + (node.__size || 12) + 4);
-                            }}
-                            linkDirectionalArrowLength={6}
-                            linkDirectionalArrowRelPos={1}
-                            linkWidth={2}
-                            linkColor={() => 'rgba(255, 255, 255, 0.3)'}
-                            backgroundColor="#1a1b1e"
-                            width={typeof window !== 'undefined' ? window.innerWidth - 100 : 1200}
-                            height={600}
-                            onNodeClick={(node) => {
-                                setSelectedUserId(node.id);
-                            }}
-                            onNodeRightClick={() => {
-                                setSelectedUserId(null);
-                            }}
-                        />
-                    </div>
+                <>
+                    <Paper p="md" withBorder>
+                        <Text fw={700} mb="md">
+                            Граф реферальной сети ({network.nodes.length} узлов, {network.edges.length} связей)
+                        </Text>
+                        <div style={{ border: '1px solid #373a40', borderRadius: '8px', overflow: 'hidden' }}>
+                            {viewMode === '2d' ? (
+                                <ForceGraph2D
+                                    graphData={{
+                                        nodes: network.nodes.map((n) => ({
+                                            ...n,
+                                            color: getLevelColor(n.level),
+                                        })),
+                                        links: network.edges.map((e) => ({
+                                            source: e.from,
+                                            target: e.to,
+                                            id: e.id,
+                                        })),
+                                    }}
+                                    nodeLabel={(node) =>
+                                        `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
+                                    }
+                                    nodeColor={(node) => getLevelColor(node.level)}
+                                    nodeVal={() => 12}
+                                    nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                                        const label = node.username || node.telegramId?.toString() || node.id;
+                                        const fontSize = Math.max(8, 12 / globalScale);
+                                        ctx.font = `bold ${fontSize}px Sans-Serif`;
+                                        ctx.textAlign = 'center';
+                                        ctx.textBaseline = 'middle';
+                                        ctx.fillStyle = '#fff';
+                                        const bckgDimensions = ctx.measureText(label);
+                                        const bckgPadding = 2;
+                                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                                        ctx.fillRect(
+                                            node.x - bckgDimensions.width / 2 - bckgPadding,
+                                            node.y - fontSize / 2 - bckgPadding + (node.__size || 12) + 4,
+                                            bckgDimensions.width + bckgPadding * 2,
+                                            fontSize + bckgPadding * 2
+                                        );
+                                        ctx.fillStyle = '#fff';
+                                        ctx.fillText(label, node.x, node.y + (node.__size || 12) + 4);
+                                    }}
+                                    linkDirectionalArrowLength={6}
+                                    linkDirectionalArrowRelPos={1}
+                                    linkWidth={2}
+                                    linkColor={() => 'rgba(255, 255, 255, 0.3)'}
+                                    backgroundColor="#1a1b1e"
+                                    width={typeof window !== 'undefined' ? window.innerWidth - 100 : 1200}
+                                    height={600}
+                                    onNodeClick={(node) => {
+                                        setSelectedUserId(node.id);
+                                    }}
+                                    onNodeRightClick={() => {
+                                        setSelectedUserId(null);
+                                    }}
+                                />
+                            ) : (
+                                <ForceGraph3D
+                                    graphData={{
+                                        nodes: network.nodes.map((n) => ({
+                                            ...n,
+                                            color: getLevelColor(n.level),
+                                        })),
+                                        links: network.edges.map((e) => ({
+                                            source: e.from,
+                                            target: e.to,
+                                            id: e.id,
+                                        })),
+                                    }}
+                                    nodeLabel={(node) =>
+                                        `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
+                                    }
+                                    nodeColor={(node) => getLevelColor(node.level)}
+                                    nodeVal={() => 8}
+                                    nodeThreeObject={(node: any) => {
+                                        const sprite = new THREE.Sprite(
+                                            new THREE.SpriteMaterial({
+                                                map: (() => {
+                                                    const canvas = document.createElement('canvas');
+                                                    canvas.width = 128;
+                                                    canvas.height = 64;
+                                                    const ctx = canvas.getContext('2d')!;
+                                                    const label = node.username || node.telegramId?.toString() || node.id;
+                                                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                                    ctx.fillStyle = '#fff';
+                                                    ctx.font = 'bold 24px Sans-Serif';
+                                                    ctx.textAlign = 'center';
+                                                    ctx.textBaseline = 'middle';
+                                                    ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+                                                    const texture = new THREE.CanvasTexture(canvas);
+                                                    return texture;
+                                                })(),
+                                            })
+                                        );
+                                        sprite.scale.set(40, 20, 1);
+                                        return sprite;
+                                    }}
+                                    linkDirectionalArrowLength={6}
+                                    linkDirectionalArrowRelPos={1}
+                                    linkWidth={2}
+                                    linkColor={() => 'rgba(255, 255, 255, 0.3)'}
+                                    backgroundColor="#1a1b1e"
+                                    width={typeof window !== 'undefined' ? window.innerWidth - 100 : 1200}
+                                    height={600}
+                                    onNodeClick={(node) => {
+                                        setSelectedUserId(node.id);
+                                    }}
+                                    onNodeRightClick={() => {
+                                        setSelectedUserId(null);
+                                    }}
+                                />
+                            )}
+                        </div>
 
-                    <Group mt="md" gap="xs">
-                        <Badge color="gray">Platinum</Badge>
-                        <Badge color="yellow">Aurum</Badge>
-                        <Badge color="gray" variant="light">Argentum</Badge>
-                        <Badge color="orange">Ferrum</Badge>
-                    </Group>
-                </Paper>
+                        <Group mt="md" gap="xs">
+                            <Badge color="gray">Platinum</Badge>
+                            <Badge color="yellow">Aurum</Badge>
+                            <Badge color="gray" variant="light">Argentum</Badge>
+                            <Badge color="orange">Ferrum</Badge>
+                        </Group>
+                    </Paper>
+
+                    <Modal
+                        opened={fullscreen}
+                        onClose={() => setFullscreen(false)}
+                        fullScreen
+                        title={
+                            <Group justify="space-between" style={{ width: '100%' }}>
+                                <Text fw={700}>
+                                    Граф реферальной сети ({network.nodes.length} узлов, {network.edges.length} связей)
+                                </Text>
+                                <Button
+                                    leftSection={<IconMinimize size={16} />}
+                                    onClick={() => setFullscreen(false)}
+                                    variant="light"
+                                >
+                                    Свернуть
+                                </Button>
+                            </Group>
+                        }
+                    >
+                        <div style={{ width: '100%', height: 'calc(100vh - 120px)' }}>
+                            {viewMode === '2d' ? (
+                                <ForceGraph2D
+                                    graphData={{
+                                        nodes: network.nodes.map((n) => ({
+                                            ...n,
+                                            color: getLevelColor(n.level),
+                                        })),
+                                        links: network.edges.map((e) => ({
+                                            source: e.from,
+                                            target: e.to,
+                                            id: e.id,
+                                        })),
+                                    }}
+                                    nodeLabel={(node) =>
+                                        `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
+                                    }
+                                    nodeColor={(node) => getLevelColor(node.level)}
+                                    nodeVal={() => 12}
+                                    nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                                        const label = node.username || node.telegramId?.toString() || node.id;
+                                        const fontSize = Math.max(8, 12 / globalScale);
+                                        ctx.font = `bold ${fontSize}px Sans-Serif`;
+                                        ctx.textAlign = 'center';
+                                        ctx.textBaseline = 'middle';
+                                        ctx.fillStyle = '#fff';
+                                        const bckgDimensions = ctx.measureText(label);
+                                        const bckgPadding = 2;
+                                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                                        ctx.fillRect(
+                                            node.x - bckgDimensions.width / 2 - bckgPadding,
+                                            node.y - fontSize / 2 - bckgPadding + (node.__size || 12) + 4,
+                                            bckgDimensions.width + bckgPadding * 2,
+                                            fontSize + bckgPadding * 2
+                                        );
+                                        ctx.fillStyle = '#fff';
+                                        ctx.fillText(label, node.x, node.y + (node.__size || 12) + 4);
+                                    }}
+                                    linkDirectionalArrowLength={6}
+                                    linkDirectionalArrowRelPos={1}
+                                    linkWidth={2}
+                                    linkColor={() => 'rgba(255, 255, 255, 0.3)'}
+                                    backgroundColor="#1a1b1e"
+                                    width={typeof window !== 'undefined' ? window.innerWidth : 1920}
+                                    height={typeof window !== 'undefined' ? window.innerHeight - 120 : 1080}
+                                    onNodeClick={(node) => {
+                                        setSelectedUserId(node.id);
+                                    }}
+                                    onNodeRightClick={() => {
+                                        setSelectedUserId(null);
+                                    }}
+                                />
+                            ) : (
+                                <ForceGraph3D
+                                    graphData={{
+                                        nodes: network.nodes.map((n) => ({
+                                            ...n,
+                                            color: getLevelColor(n.level),
+                                        })),
+                                        links: network.edges.map((e) => ({
+                                            source: e.from,
+                                            target: e.to,
+                                            id: e.id,
+                                        })),
+                                    }}
+                                    nodeLabel={(node) =>
+                                        `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
+                                    }
+                                    nodeColor={(node) => getLevelColor(node.level)}
+                                    nodeVal={() => 8}
+                                    nodeThreeObject={(node: any) => {
+                                        const sprite = new THREE.Sprite(
+                                            new THREE.SpriteMaterial({
+                                                map: (() => {
+                                                    const canvas = document.createElement('canvas');
+                                                    canvas.width = 128;
+                                                    canvas.height = 64;
+                                                    const ctx = canvas.getContext('2d')!;
+                                                    const label = node.username || node.telegramId?.toString() || node.id;
+                                                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                                    ctx.fillStyle = '#fff';
+                                                    ctx.font = 'bold 24px Sans-Serif';
+                                                    ctx.textAlign = 'center';
+                                                    ctx.textBaseline = 'middle';
+                                                    ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+                                                    const texture = new THREE.CanvasTexture(canvas);
+                                                    return texture;
+                                                })(),
+                                            })
+                                        );
+                                        sprite.scale.set(40, 20, 1);
+                                        return sprite;
+                                    }}
+                                    linkDirectionalArrowLength={6}
+                                    linkDirectionalArrowRelPos={1}
+                                    linkWidth={2}
+                                    linkColor={() => 'rgba(255, 255, 255, 0.3)'}
+                                    backgroundColor="#1a1b1e"
+                                    width={typeof window !== 'undefined' ? window.innerWidth : 1920}
+                                    height={typeof window !== 'undefined' ? window.innerHeight - 120 : 1080}
+                                    onNodeClick={(node) => {
+                                        setSelectedUserId(node.id);
+                                    }}
+                                    onNodeRightClick={() => {
+                                        setSelectedUserId(null);
+                                    }}
+                                />
+                            )}
+                        </div>
+                    </Modal>
+                </>
             ) : (
                 <Paper p="md" withBorder>
                     <Center h={400}>
