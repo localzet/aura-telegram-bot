@@ -8,6 +8,7 @@ import { PurchasesPage } from './pages/Purchases';
 import { AnalyticsPage } from './pages/Analytics';
 import { PromoCodesPage } from './pages/PromoCodes';
 import { BlacklistPage } from './pages/Blacklist';
+import { ReferralsPage } from './pages/Referrals';
 import { useAuthStore } from './store/authStore';
 
 const theme = createTheme({
@@ -55,6 +56,7 @@ export function App() {
                         <Route path="analytics" element={<AnalyticsPage />} />
                         <Route path="promocodes" element={<PromoCodesPage />} />
                         <Route path="blacklist" element={<BlacklistPage />} />
+                        <Route path="referrals" element={<ReferralsPage />} />
                     </Route>
                 </Routes>
             </BrowserRouter>

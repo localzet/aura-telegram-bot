@@ -7,6 +7,7 @@ import { AdminPurchasesService } from './admin-purchases.service';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminPromoCodesService } from './admin-promocodes.service';
 import { AdminBlacklistService } from './admin-blacklist.service';
+import { AdminReferralsService } from './admin-referrals.service';
 
 @Module({
     controllers: [AdminController],
@@ -18,6 +19,7 @@ import { AdminBlacklistService } from './admin-blacklist.service';
         AdminAnalyticsService,
         AdminPromoCodesService,
         AdminBlacklistService,
+        AdminReferralsService,
     ],
     exports: [AdminBlacklistService, AdminPromoCodesService],
 })

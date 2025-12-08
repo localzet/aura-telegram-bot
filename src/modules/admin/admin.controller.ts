@@ -18,6 +18,7 @@ import { AdminPurchasesService } from './admin-purchases.service';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminPromoCodesService } from './admin-promocodes.service';
 import { AdminBlacklistService } from './admin-blacklist.service';
+import { AdminReferralsService } from './admin-referrals.service';
 import { AdminAuthGuard } from './admin-auth.guard';
 
 @Controller('admin')
@@ -30,6 +31,7 @@ export class AdminController {
         private readonly analyticsService: AdminAnalyticsService,
         private readonly promoCodesService: AdminPromoCodesService,
         private readonly blacklistService: AdminBlacklistService,
+        private readonly referralsService: AdminReferralsService,
     ) {}
 
     // Auth endpoints
@@ -245,6 +247,25 @@ export class AdminController {
     @UseGuards(AdminAuthGuard)
     async removeFromBlacklist(@Param('id') id: string) {
         return this.blacklistService.removeFromBlacklist(id);
+    }
+
+    // Referrals endpoints
+    @Get('referrals/network')
+    @UseGuards(AdminAuthGuard)
+    async getReferralNetwork(
+        @Query('userId') userId?: string,
+        @Query('depth') depth?: string,
+    ) {
+        return this.referralsService.getReferralNetwork(
+            userId,
+            depth ? parseInt(depth, 10) : undefined,
+        );
+    }
+
+    @Get('referrals/stats')
+    @UseGuards(AdminAuthGuard)
+    async getReferralStats() {
+        return this.referralsService.getReferralStats();
     }
 }
 

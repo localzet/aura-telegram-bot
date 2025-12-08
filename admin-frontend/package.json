@@ -21,6 +21,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.27.0",
+    "react-force-graph": "^1.25.3",
+    "react-force-graph-2d": "^1.25.3",
     "zod": "^3.25.74",
     "zustand": "^5.0.8"
   },
