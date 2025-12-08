@@ -233,17 +233,23 @@ export class BotService {
                 return;
             }
 
-            const userInfo = `${user.fullName || 'Без имени'} (@${user.username || 'без username'}, ID: ${user.telegramId})`;
+            const userName = user.fullName || 'Без имени';
+            const userUsername = user.username ? `@${user.username}` : 'без username';
             const inviterInfo = inviter 
-                ? `\n👥 Приглашен пользователем: <b>${inviter.fullName || inviter.username || inviter.telegramId.toString()}</b> (ID: ${inviter.telegramId})`
+                ? `\n\n👥 <b>Приглашен пользователем:</b>\n   ${inviter.fullName || inviter.username || inviter.telegramId.toString()}\n   ID: <code>${inviter.telegramId}</code>`
                 : '';
             
-            const notification = `🆕 Новый пользователь
+            const notification = `🆕 <b>Новый пользователь</b>
 
-👤 Пользователь: <b>${userInfo}</b>
-📅 Уровень: ${prettyLevel(user.level)}
-🌐 Язык: ${user.language}${inviterInfo}
-🆔 User ID: <code>${user.id}</code>`;
+👤 <b>Пользователь:</b> ${userName}
+   ${userUsername}
+   ID: <code>${user.telegramId}</code>
+
+📅 <b>Уровень:</b> ${prettyLevel(user.level)}
+
+🌐 <b>Язык:</b> ${user.language}${inviterInfo}
+
+🆔 <b>User ID:</b> <code>${user.id}</code>`;
 
             await this.bot.api.sendMessage(adminId, notification, {parse_mode: "HTML"});
         } catch (e: any) {

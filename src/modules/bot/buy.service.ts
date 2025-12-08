@@ -8,6 +8,7 @@ import {PrismaService} from "@common/services/prisma.service";
 import {getPrice} from "@common/utils/discount";
 import {ConfigService} from "@nestjs/config";
 import {UserService} from "@common/services/user.service";
+import {prettyLevel} from "@common/utils";
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -227,18 +228,26 @@ export class BuyService {
 
             if (expireDate) {
                 // Уведомление о продлении подписки
-                const userInfo = `${user.fullName || user.username || 'Без имени'} (@${user.username || 'без username'}, ID: ${user.telegramId})`;
+                const userName = user.fullName || user.username || 'Без имени';
+                const userUsername = user.username ? `@${user.username}` : 'без username';
                 // Проверяем, была ли у пользователя уже подписка (auraUser существует)
                 const wasExtended = !!auraUser;
                 const action = wasExtended ? "продлил" : "оформил";
                 const notification = `💰 ${action === "продлил" ? "Продление" : "Новая"} подписка
 
-👤 Пользователь: <b>${userInfo}</b>
-📅 Уровень: ${user.level}
-💵 Сумма: ${purchase.amount.toFixed(2)} ${purchase.currency}
-📦 Период: ${purchase.month} ${purchase.month === 1 ? 'месяц' : purchase.month < 5 ? 'месяца' : 'месяцев'}
-📆 Подписка до: ${expireDate.toLocaleDateString("ru-RU")}
-🆔 Purchase ID: <code>${purchase.id}</code>`;
+👤 <b>Пользователь:</b> ${userName}
+   ${userUsername}
+   ID: <code>${user.telegramId}</code>
+
+📅 <b>Уровень:</b> ${prettyLevel(user.level)}
+
+💵 <b>Сумма:</b> ${purchase.amount.toFixed(2)} ${purchase.currency}
+
+📦 <b>Период:</b> ${purchase.month} ${purchase.month === 1 ? 'месяц' : purchase.month < 5 ? 'месяца' : 'месяцев'}
+
+📆 <b>Подписка до:</b> ${expireDate.toLocaleDateString("ru-RU")}
+
+🆔 <b>Purchase ID:</b> <code>${purchase.id}</code>`;
 
                 await this.notifyDev(notification);
 
