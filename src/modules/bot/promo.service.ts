@@ -9,6 +9,7 @@ import { UserService } from "@common/services/user.service";
 import { AdminPromoCodesService } from "@modules/admin/admin-promocodes.service";
 import { I18nService } from "@common/i18n";
 import { prettyLevel } from "@common/utils";
+import { UserLevel } from "@prisma/client";
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -70,7 +71,7 @@ export class PromoService {
             // Применение промокода
             if (validation.type === "level" && validation.level) {
                 // Назначение уровня
-                const assignedLevel = validation.level;
+                const assignedLevel = validation.level as UserLevel;
                 await this.prisma.user.update({
                     where: { id: user.id },
                     data: { level: assignedLevel },
@@ -88,9 +89,10 @@ export class PromoService {
                     });
                 }
 
+                const levelText = prettyLevel(assignedLevel);
                 await ctx.reply(
                     this.i18n.t(ctx, "promo_level_granted", {
-                        level: prettyLevel(assignedLevel),
+                        level: levelText || assignedLevel,
                     }),
                 );
             } else if (validation.type === "discount" && validation.discount) {
