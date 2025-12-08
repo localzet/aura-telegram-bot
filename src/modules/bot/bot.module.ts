@@ -16,7 +16,13 @@ const log = debug("bot:bot.module");
 @Module({
   controllers: [],
   imports: [AdminModule],
-  providers: [BotService, ReferralService, BuyService, PromoService, AdminConfigService],
+  providers: [
+    BotService,
+    ReferralService,
+    BuyService,
+    PromoService,
+    AdminConfigService,
+  ],
   exports: [BotService],
 })
 export class BotModule {
@@ -26,7 +32,10 @@ export class BotModule {
     this.bot.use(ResponseTime);
     this.bot.catch((err) => {
       const ctx = err.ctx;
-      this.logger.error(`Error while handling update ${ctx.update.update_id}:`, err.error);
+      this.logger.error(
+        `Error while handling update ${ctx.update.update_id}:`,
+        err.error,
+      );
       const e = err.error;
       if (e instanceof GrammyError) {
         this.logger.error(`Error in request: ${e.description}`, e.stack);
