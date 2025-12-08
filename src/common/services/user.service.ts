@@ -1,4 +1,4 @@
-import {Injectable, Logger, ForbiddenException} from "@nestjs/common";
+import {Injectable, Logger} from "@nestjs/common";
 import {AxiosService} from "@common/axios";
 import {PrismaService} from "@common/services/prisma.service";
 import {Context} from "grammy";
@@ -6,6 +6,7 @@ import {User, UserLevel} from "@prisma/client";
 import {ConfigService} from "@nestjs/config";
 import {z} from "zod";
 import {UsersSchema} from "@remnawave/backend-contract";
+import {I18nService} from "@common/i18n";
 
 @Injectable()
 export class UserService {
@@ -15,6 +16,7 @@ export class UserService {
         private readonly config: ConfigService,
         private readonly prisma: PrismaService,
         private readonly axios: AxiosService,
+        private readonly i18n: I18nService,
     ) {
     }
 
@@ -52,15 +54,15 @@ export class UserService {
         const blacklisted = await this.prisma.blacklist.findFirst({
             where: {
                 isActive: true,
-                OR: [
-                    { telegramId: BigInt(telegramId) },
-                    { auraId: { not: null } }, // Will be checked after auraId is set
-                ],
+                telegramId: BigInt(telegramId),
             },
         });
 
-        if (blacklisted && blacklisted.telegramId?.toString() === telegramId.toString()) {
-            throw new ForbiddenException("Доступ запрещен");
+        if (blacklisted) {
+            // Возвращаем ошибку через контекст, если он доступен
+            // Для Telegram бота лучше вернуть null и обработать в вызывающем коде
+            this.logger.warn(`Blacklisted user attempted access: ${telegramId}`);
+            throw new Error("BLACKLISTED");
         }
 
         const user = await this.prisma.user.upsert({
@@ -79,7 +81,8 @@ export class UserService {
             });
 
             if (blacklistedByAura) {
-                throw new ForbiddenException("Доступ запрещен");
+                this.logger.warn(`Blacklisted user (by auraId) attempted access: ${telegramId}, auraId: ${user.auraId}`);
+                throw new Error("BLACKLISTED");
             }
         }
 

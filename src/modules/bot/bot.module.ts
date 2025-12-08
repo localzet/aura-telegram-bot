@@ -7,12 +7,16 @@ import { BotService } from "@modules/bot/bot.service";
 import { ResponseTime } from "@common/middleware";
 import { ReferralService } from "@modules/bot/referral.service";
 import { BuyService } from "@modules/bot/buy.service";
+import { PromoService } from "@modules/bot/promo.service";
+import { AdminModule } from "@modules/admin/admin.module";
+import { AdminConfigService } from "@modules/admin/admin-config.service";
 
 const log = debug("bot:bot.module");
 
 @Module({
   controllers: [],
-  providers: [BotService, ReferralService, BuyService],
+  imports: [AdminModule],
+  providers: [BotService, ReferralService, BuyService, PromoService, AdminConfigService],
   exports: [BotService],
 })
 export class BotModule {

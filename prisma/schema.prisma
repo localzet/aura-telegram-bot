@@ -127,3 +127,14 @@ model Blacklist {
   @@index([telegramId])
   @@index([auraId])
 }
+
+model Config {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+
+  @@index([key])
+}

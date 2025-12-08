@@ -9,6 +9,7 @@ import {getPrice} from "@common/utils/discount";
 import {ConfigService} from "@nestjs/config";
 import {UserService} from "@common/services/user.service";
 import {prettyLevel} from "@common/utils";
+import {I18nService} from "@common/i18n";
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
@@ -22,36 +23,47 @@ export class BuyService {
         private readonly config: ConfigService,
         private readonly prisma: PrismaService,
         private readonly user: UserService,
+        private readonly i18n: I18nService,
     ) {
     }
 
     @CallbackQuery("buy")
     async onBuy(@Ctx() ctx: Context): Promise<void> {
         try {
-            const {tg: user} = await this.user.getUser(ctx);
+            let user;
+            try {
+                const result = await this.user.getUser(ctx);
+                user = result.tg;
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                throw error;
+            }
 
             const {
                 firstDiscount,
-            } = await getPrice(1, user, this.prisma)
+            } = await getPrice(1, user, this.prisma, this.config)
 
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(
-                `📦 Выберите тариф для покупки:
+                `${this.i18n.t(ctx, "select_tariff")}
 <code>
-1 месяц     ${this.calcPrice(1)}р
-3 месяца    ${this.calcPrice(3)}р (-15%)
-6 месяцев   ${this.calcPrice(6)}р (-20%)
-12 месяцев  ${this.calcPrice(12)}р (-25%)
+1 ${this.i18n.t(ctx, "month")}     ${this.calcPrice(1)}р
+3 ${this.i18n.t(ctx, "months")}    ${this.calcPrice(3)}р (-15%)
+6 ${this.i18n.t(ctx, "months")}   ${this.calcPrice(6)}р (-20%)
+12 ${this.i18n.t(ctx, "months")}  ${this.calcPrice(12)}р (-25%)
 </code>
-🎁 Ваша скидка: ${firstDiscount}%
+${this.i18n.t(ctx, "your_discount", { discount: firstDiscount })}
         `,
                 {
                     reply_markup: new InlineKeyboard()
-                        .text("1 месяц", "buy_plan_1")
-                        .text("3 месяца", "buy_plan_3")
+                        .text(`1 ${this.i18n.t(ctx, "month")}`, "buy_plan_1")
+                        .text(`3 ${this.i18n.t(ctx, "months")}`, "buy_plan_3")
                         .row()
-                        .text("6 месяцев", "buy_plan_6")
-                        .text("12 месяцев", "buy_plan_12"),
+                        .text(`6 ${this.i18n.t(ctx, "months")}`, "buy_plan_6")
+                        .text(`12 ${this.i18n.t(ctx, "months")}`, "buy_plan_12"),
                     parse_mode: "HTML",
                 },
             );
@@ -64,7 +76,7 @@ export class BuyService {
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
             await ctx.reply(
-                "⚠️ Произошла ошибка при загрузке тарифов. Попробуйте позже.",
+                this.i18n.t(ctx, "error_loading_tariffs"),
             );
         }
     }
@@ -75,8 +87,18 @@ export class BuyService {
             const months = Number(ctx.match?.[1]);
             if (!months) return;
 
-            const {tg: user} = await this.user.getUser(ctx);
-            const {price} = await getPrice(months, user, this.prisma);
+            let user;
+            try {
+                const result = await this.user.getUser(ctx);
+                user = result.tg;
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                throw error;
+            }
+            const {price} = await getPrice(months, user, this.prisma, this.config);
 
             await ctx.answerCallbackQuery();
 
@@ -91,15 +113,18 @@ export class BuyService {
                 },
             });
 
+            const monthText = months === 1 
+                ? this.i18n.t(ctx, "month") 
+                : this.i18n.t(ctx, "months");
             await this.bot.api.sendInvoice(
                 user.telegramId.toString(),
-                `Подписка на ${months} мес`,
+                `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
                 "Защита интернет-соединения",
                 purchase.id,
                 "RUB",
                 [
                     {
-                        label: `Подписка на ${months} мес`,
+                        label: `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
                         amount: Math.round(price * 100),
                     },
                 ],
@@ -113,14 +138,24 @@ export class BuyService {
             await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
-            await ctx.reply("⚠️ Не удалось сформировать заказ. Попробуйте позже.");
+            await ctx.reply(this.i18n.t(ctx, "error_creating_order"));
         }
     }
 
     @On("pre_checkout_query")
     async checkout(@Ctx() ctx: Context): Promise<void> {
         try {
-            await this.user.getUser(ctx);
+            try {
+                await this.user.getUser(ctx);
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerPreCheckoutQuery(false, {
+                        error_message: this.i18n.t(ctx, "blacklisted"),
+                    });
+                    return;
+                }
+                throw error;
+            }
 
             const payload = ctx.preCheckoutQuery?.invoice_payload;
             const purchase = await this.prisma.purchase.findUnique({
@@ -134,7 +169,19 @@ export class BuyService {
                 return;
             }
 
-            const {aura: auraUser} = await this.user.getUser(ctx);
+            let auraUser;
+            try {
+                const result = await this.user.getUser(ctx);
+                auraUser = result.aura;
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerPreCheckoutQuery(false, {
+                        error_message: this.i18n.t(ctx, "blacklisted"),
+                    });
+                    return;
+                }
+                throw error;
+            }
             const months = purchase?.month;
             if (!months) {
                 this.logger.warn(`Не найден срок подписки для платежа ${payload}`);
@@ -177,7 +224,19 @@ export class BuyService {
     @On("message:successful_payment")
     async successfulPayment(@Ctx() ctx: Context): Promise<void> {
         try {
-            const {aura: auraUser, tg: user} = await this.user.getUser(ctx);
+            let user, auraUser;
+            try {
+                const result = await this.user.getUser(ctx);
+                user = result.tg;
+                auraUser = result.aura;
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    // Платеж уже прошел, но пользователь в черном списке
+                    this.logger.warn(`Blacklisted user attempted payment: ${ctx.from?.id}`);
+                    return;
+                }
+                throw error;
+            }
             const payment = ctx.message?.successful_payment;
 
             const purchase = await this.prisma.purchase.findUnique({
@@ -251,9 +310,9 @@ export class BuyService {
 
                 await this.notifyDev(notification);
 
-                await ctx.reply(
-                    `✅ Оплата прошла успешно. Подписка активна до ${expireDate.toLocaleDateString("ru-RU")}`,
-                );
+            await ctx.reply(
+                this.i18n.t(ctx, "payment_success", { date: expireDate.toLocaleDateString("ru-RU") }),
+            );
             } else {
                 await this
                     .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
@@ -273,7 +332,7 @@ export class BuyService {
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
             await ctx.reply(
-                "⚠️ Оплата прошла, но при активации произошла ошибка. Мы решим вопрос в ближайшее время.",
+                this.i18n.t(ctx, "payment_error"),
             );
         }
     }

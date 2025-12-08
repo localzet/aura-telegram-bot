@@ -8,6 +8,7 @@ import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminPromoCodesService } from './admin-promocodes.service';
 import { AdminBlacklistService } from './admin-blacklist.service';
 import { AdminReferralsService } from './admin-referrals.service';
+import { AdminConfigService } from './admin-config.service';
 import { AxiosModule } from '@common/axios';
 
 @Module({
@@ -22,8 +23,9 @@ import { AxiosModule } from '@common/axios';
         AdminPromoCodesService,
         AdminBlacklistService,
         AdminReferralsService,
+        AdminConfigService,
     ],
-    exports: [AdminBlacklistService, AdminPromoCodesService],
+    exports: [AdminBlacklistService, AdminPromoCodesService, AdminConfigService],
 })
 export class AdminModule {}
 

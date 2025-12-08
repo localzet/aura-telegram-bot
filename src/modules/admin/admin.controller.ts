@@ -20,6 +20,7 @@ import { AdminPromoCodesService } from './admin-promocodes.service';
 import { AdminBlacklistService } from './admin-blacklist.service';
 import { AdminReferralsService } from './admin-referrals.service';
 import { AdminAuthGuard } from './admin-auth.guard';
+import { AdminConfigService } from './admin-config.service';
 
 @Controller('admin')
 export class AdminController {
@@ -32,6 +33,7 @@ export class AdminController {
         private readonly promoCodesService: AdminPromoCodesService,
         private readonly blacklistService: AdminBlacklistService,
         private readonly referralsService: AdminReferralsService,
+        private readonly configService: AdminConfigService,
     ) {}
 
     // Auth endpoints
@@ -278,6 +280,37 @@ export class AdminController {
     @UseGuards(AdminAuthGuard)
     async getReferralStats() {
         return this.referralsService.getReferralStats();
+    }
+
+    // Config endpoints
+    @Get('config')
+    @UseGuards(AdminAuthGuard)
+    async getConfig() {
+        return this.configService.getConfig();
+    }
+
+    @Put('config/pricing')
+    @UseGuards(AdminAuthGuard)
+    async updatePricingConfig(@Body() body: any) {
+        await this.configService.updatePricingConfig(body.config, body.updatedBy);
+        return { message: 'Pricing config updated' };
+    }
+
+    @Put('config/closed-mode')
+    @UseGuards(AdminAuthGuard)
+    async updateClosedMode(@Body() body: { enabled: boolean; updatedBy?: string }) {
+        await this.configService.updateClosedMode(body.enabled, body.updatedBy);
+        return { message: 'Closed mode updated' };
+    }
+
+    @Put('config/:key')
+    @UseGuards(AdminAuthGuard)
+    async updateConfig(
+        @Param('key') key: string,
+        @Body() body: { value: string; description?: string; updatedBy?: string },
+    ) {
+        await this.configService.updateConfig(key, body.value, body.description, body.updatedBy);
+        return { message: 'Config updated' };
     }
 }
 

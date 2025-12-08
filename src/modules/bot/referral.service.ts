@@ -11,6 +11,8 @@ import {prettyLevel} from "@common/utils";
 import {User, UserLevel} from "@prisma/client";
 import {UserService} from "@common/services/user.service";
 import {getPrice} from "@common/utils/discount";
+import {ConfigService} from "@nestjs/config";
+import {I18nService} from "@common/i18n";
 
 const log = debug("bot:referral");
 const logError = debug("bot:referral:error");
@@ -24,6 +26,8 @@ export class ReferralService {
         private readonly bot: Bot<Context>,
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
+        private readonly config: ConfigService,
+        private readonly i18n: I18nService,
     ) {
         log("ReferralService initialized");
     }
@@ -32,7 +36,10 @@ export class ReferralService {
         try {
             const {tg: user} = await this.userService.getUser(ctx);
             return user;
-        } catch (error) {
+        } catch (error: any) {
+            if (error.message === "BLACKLISTED") {
+                throw error; // Пробрасываем дальше для обработки
+            }
             logError("Failed to get user from context:", error);
             return null;
         }
@@ -41,10 +48,17 @@ export class ReferralService {
     @CallbackQuery("ref")
     async onRef(@Ctx() ctx: Context): Promise<void> {
         try {
-            const user = await this.getUserSafe(ctx);
-            if (!user) {
+            let user;
+            try {
+                const result = await this.userService.getUser(ctx);
+                user = result.tg;
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
                 await ctx.answerCallbackQuery({
-                    text: "Не удалось получить данные пользователя",
+                    text: this.i18n.t(ctx, "error_occurred"),
                     show_alert: true,
                 });
                 return;
@@ -53,7 +67,7 @@ export class ReferralService {
             const {
                 referredCountThisMonth,
                 firstDiscount,
-            } = await getPrice(1, user, this.prisma)
+            } = await getPrice(1, user, this.prisma, this.config)
 
             const refLink = `https://t.me/${this.bot.botInfo.username}?start=ref_${user.telegramId.toString()}`;
             const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(
@@ -61,14 +75,14 @@ export class ReferralService {
             )}`;
 
             const kb = new InlineKeyboard()
-                .text('📈 Приглашённые', 'my_refs')
-                .url('📤 Пригласить', shareUrl)
+                .text(this.i18n.t(ctx, "my_refs"), 'my_refs')
+                .url(this.i18n.t(ctx, "invite_button"), shareUrl)
                 .row()
 
             if (['aurum', 'platinum'].includes(user.level)) {
-                kb.text('🧭 Управление', 'ref_manage');
+                kb.text(this.i18n.t(ctx, "manage"), 'ref_manage');
             }
-            kb.text('📜 Об уровнях', 'ref_levels');
+            kb.text(this.i18n.t(ctx, "levels_info"), 'ref_levels');
 
             const persistDiscount: Record<UserLevel, string> = {
                 platinum: 'Поздравляем! Это значит, что сервис для вас абсолютно бесплатен, навсегда 🥳\n\n<i>Платинум - особый уровень, который назначается исключительно разработчиками. Можно сказать, что вы - часть закрытого сообщества 😎\nВы также можете пригласить до 5 друзей в "Золотой" уровень, до 10 - в "Серебряный". </i>',
@@ -79,16 +93,16 @@ export class ReferralService {
 
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(
-                `👥 Пригласите друзей и получите бонус:
+                `${this.i18n.t(ctx, "referral_info")}
 
-Ваш уровень: <b>${prettyLevel(user.level)}</b>
+${this.i18n.t(ctx, "your_level")} <b>${prettyLevel(user.level)}</b>
 ${persistDiscount[user.level]}
 
-🔗 Ваша ссылка: <code>${refLink}</code>
-👤 Приглашено в этом месяце: <code>${referredCountThisMonth}</code>
-📉 Текущая скидка: <code>${firstDiscount}%</code>
+${this.i18n.t(ctx, "your_link")} <code>${refLink}</code>
+${this.i18n.t(ctx, "invited_this_month")} <code>${referredCountThisMonth}</code>
+${this.i18n.t(ctx, "current_discount")} <code>${firstDiscount}%</code>
 
-<i>Важно! Скидка даётся только за друзей, приглашенных в текущем месяце (каждый месяц счетчик сбрасывается)</i>`,
+${this.i18n.t(ctx, "referral_note")}`,
                 {reply_markup: kb, parse_mode: 'HTML'},
             );
 
@@ -137,10 +151,23 @@ ${persistDiscount[user.level]}
     @CallbackQuery("my_refs")
     async onMyRefs(@Ctx() ctx: Context): Promise<void> {
         try {
-            const user = await this.getUserSafe(ctx);
+            let user;
+            try {
+                user = await this.getUserSafe(ctx);
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                await ctx.answerCallbackQuery({
+                    text: this.i18n.t(ctx, "error_occurred"),
+                    show_alert: true,
+                });
+                return;
+            }
             if (!user) {
                 await ctx.answerCallbackQuery({
-                    text: "Не удалось получить данные пользователя",
+                    text: this.i18n.t(ctx, "error_occurred"),
                     show_alert: true,
                 });
                 return;
@@ -161,13 +188,13 @@ ${persistDiscount[user.level]}
             });
 
             if (!referrals.length) {
-                await ctx.answerCallbackQuery("У вас нет приглашённых пользователей.");
+                await ctx.answerCallbackQuery(this.i18n.t(ctx, "no_referrals"));
                 log(`onMyRefs: user ${user.telegramId.toString()} has no referrals`);
                 return;
             }
 
             const text =
-                "📋 Ваши приглашённые:\n\n" +
+                `${this.i18n.t(ctx, "your_referrals")}\n\n` +
                 referrals
                     .map((ref) => {
                         const i = ref.invited;
@@ -191,17 +218,30 @@ ${persistDiscount[user.level]}
     @CallbackQuery("ref_manage")
     async onRefManage(@Ctx() ctx: Context): Promise<void> {
         try {
-            const user = await this.getUserSafe(ctx);
+            let user;
+            try {
+                user = await this.getUserSafe(ctx);
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                await ctx.answerCallbackQuery({
+                    text: this.i18n.t(ctx, "error_occurred"),
+                    show_alert: true,
+                });
+                return;
+            }
             if (!user) {
                 await ctx.answerCallbackQuery({
-                    text: "Не удалось получить данные пользователя",
+                    text: this.i18n.t(ctx, "error_occurred"),
                     show_alert: true,
                 });
                 return;
             }
 
             if (!["aurum", "platinum"].includes(user.level)) {
-                await ctx.answerCallbackQuery({text: "Недоступно для вашего уровня"});
+                await ctx.answerCallbackQuery({text: this.i18n.t(ctx, "access_denied")});
                 log(`onRefManage: access denied for user ${user.telegramId.toString()}`);
                 return;
             }
@@ -238,13 +278,13 @@ ${persistDiscount[user.level]}
 
             await ctx.answerCallbackQuery();
             await ctx.editMessageText(
-                `🧭 Управление рефералами:
+                `${this.i18n.t(ctx, "management_panel")}
 
-Вы можете изменить уровень доступа для своих приглашённых.
+${this.i18n.t(ctx, "change_level")}
 
 ${limits}
 
-🎓 Для изменения нажмите на имя реферала ниже:
+🎓 ${this.i18n.t(ctx, "select_level", { name: "" }).replace(" {name}", "")}:
 `,
                 {reply_markup: kb},
             );
@@ -262,10 +302,23 @@ ${limits}
     @CallbackQuery(/^promote_(\d+)$/)
     async onPromote(@Ctx() ctx: Context): Promise<void> {
         try {
-            const user = await this.getUserSafe(ctx);
+            let user;
+            try {
+                user = await this.getUserSafe(ctx);
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                await ctx.answerCallbackQuery({
+                    text: this.i18n.t(ctx, "error_occurred"),
+                    show_alert: true,
+                });
+                return;
+            }
             if (!user) {
                 await ctx.answerCallbackQuery({
-                    text: "Не удалось получить данные пользователя",
+                    text: this.i18n.t(ctx, "error_occurred"),
                     show_alert: true,
                 });
                 return;
@@ -285,7 +338,7 @@ ${limits}
 
             if (!target || !["aurum", "platinum"].includes(user.level)) {
                 await ctx.answerCallbackQuery({
-                    text: "Недоступно для вашего уровня",
+                    text: this.i18n.t(ctx, "access_denied"),
                     show_alert: true,
                 });
                 return;
@@ -299,7 +352,7 @@ ${limits}
 
             if (!referral) {
                 await ctx.answerCallbackQuery({
-                    text: "Этот пользователь не является вашим приглашённым",
+                    text: this.i18n.t(ctx, "not_your_referral"),
                     show_alert: true,
                 });
                 return;
@@ -313,9 +366,10 @@ ${limits}
 
             await ctx.answerCallbackQuery();
 
+            const targetName = target.fullName || target.username || target.telegramId.toString();
             if (user.level === "platinum") {
                 await ctx.editMessageText(
-                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId.toString()}</b>:`,
+                    this.i18n.t(ctx, "select_level", { name: `<b>${targetName}</b>` }),
                     {
                         parse_mode: "HTML",
                         reply_markup: buildButtons([
@@ -333,7 +387,7 @@ ${limits}
 
             if (user.level === "aurum") {
                 await ctx.editMessageText(
-                    `Выберите уровень, который хотите назначить пользователю <b>${target.fullName || target.username || target.telegramId.toString()}</b>:`,
+                    this.i18n.t(ctx, "select_level", { name: `<b>${targetName}</b>` }),
                     {
                         parse_mode: "HTML",
                         reply_markup: buildButtons([
@@ -359,10 +413,23 @@ ${limits}
     @CallbackQuery(/^grant_(\d+)_(ferrum|argentum|aurum)$/)
     async changeUserLevel(@Ctx() ctx: Context): Promise<void> {
         try {
-            const user = await this.getUserSafe(ctx);
+            let user;
+            try {
+                user = await this.getUserSafe(ctx);
+            } catch (error: any) {
+                if (error.message === "BLACKLISTED") {
+                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
+                    return;
+                }
+                await ctx.answerCallbackQuery({
+                    text: this.i18n.t(ctx, "error_occurred"),
+                    show_alert: true,
+                });
+                return;
+            }
             if (!user) {
                 await ctx.answerCallbackQuery({
-                    text: "Не удалось получить данные пользователя",
+                    text: this.i18n.t(ctx, "error_occurred"),
                     show_alert: true,
                 });
                 return;
@@ -396,7 +463,7 @@ ${limits}
             // Проверка прав текущего пользователя на назначение уровня
             if (!["aurum", "platinum"].includes(user.level)) {
                 await ctx.answerCallbackQuery({
-                    text: "Недостаточно прав для изменения уровня",
+                    text: this.i18n.t(ctx, "insufficient_permissions"),
                     show_alert: true,
                 });
                 return;
@@ -406,7 +473,7 @@ ${limits}
             // aurum — только argentum (10)
             if (user.level === "aurum" && newLevel === "aurum") {
                 await ctx.answerCallbackQuery({
-                    text: "Вы не можете назначить этот уровень",
+                    text: this.i18n.t(ctx, "cannot_assign_level"),
                     show_alert: true,
                 });
                 return;
@@ -442,12 +509,14 @@ ${limits}
                 data: updateData,
             });
 
+            const targetUserName = targetUser.fullName || targetUser.username || targetUser.telegramId.toString();
+            const levelText = prettyLevel(newLevel);
             await ctx.answerCallbackQuery({
-                text: `Пользователю назначен уровень ${prettyLevel(newLevel)}`,
+                text: `Пользователю назначен уровень ${levelText}`,
             });
 
             await ctx.editMessageText(
-                `✅ Пользователю <b>${targetUser.fullName || targetUser.username || targetUser.telegramId.toString()}</b> успешно назначен уровень <b>${prettyLevel(newLevel)}</b>.`,
+                `✅ Пользователю <b>${targetUserName}</b> успешно назначен уровень <b>${levelText}</b>.`,
                 {parse_mode: "HTML"},
             );
 

@@ -11,6 +11,7 @@ import {PrismaService} from "@common/services/prisma.service";
 import {UserService} from "@common/services/user.service";
 import {WebhookModule} from "@modules/webhook/webhook.module";
 import {AdminModule} from "@modules/admin/admin.module";
+import {I18nService} from "@common/i18n";
 
 const logger = new Logger("bot:app.module");
 
@@ -36,8 +37,8 @@ const logger = new Logger("bot:app.module");
         AdminModule,
         AxiosModule,
     ],
-    providers: [PrismaService, UserService],
-    exports: [PrismaService, UserService],
+    providers: [PrismaService, UserService, I18nService],
+    exports: [PrismaService, UserService, I18nService],
 })
 export class AppModule {
     constructor() {

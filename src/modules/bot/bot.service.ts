@@ -13,6 +13,8 @@ import {ConfigService} from "@nestjs/config";
 import {AdminGuard} from "@common/guards";
 import {AxiosService} from "@common/axios";
 import {User} from "@prisma/client";
+import {I18nService} from "@common/i18n";
+import {AdminConfigService} from "@modules/admin/admin-config.service";
 
 const log = debug("bot:main");
 
@@ -29,6 +31,8 @@ export class BotService {
         private user: UserService,
         private config: ConfigService,
         private readonly axios: AxiosService,
+        private readonly i18n: I18nService,
+        private readonly adminConfig: AdminConfigService,
     ) {
         log(
             "Initializing bot, status:",
@@ -61,6 +65,10 @@ export class BotService {
 
         const exists = await this.prisma.user.findUnique({where: {telegramId: BigInt(telegramId)}});
         let inviter = undefined;
+        
+        // Проверка закрытого режима
+        const closedModeEnabled = await this.isClosedModeEnabled();
+        
         if (!exists) {
             if (payload?.startsWith("ref_")) {
                 const inviterTelegramId = parseInt(payload.split("_")[1] || "", 10);
@@ -70,10 +78,10 @@ export class BotService {
                     });
                 }
             }
-            // if (!inviter) {
-            //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
-            //     return;
-            // }
+            if (closedModeEnabled && !inviter) {
+                await ctx.reply(this.i18n.t(ctx, "closed_mode"));
+                return;
+            }
         } else {
             const existingReferral = await this.prisma.referral.findUnique({
                 where: {invitedId: exists.id},
@@ -87,14 +95,25 @@ export class BotService {
                         });
                     }
                 }
-                // if (!inviter) {
-                //     await ctx.reply(`👋 Добро пожаловать!\n\nК сожалению, на данный момент проект работает в закрытом режиме. Доступ только по приглашениям участников.`);
-                //     return;
-                // }
+                if (closedModeEnabled && !inviter) {
+                    await ctx.reply(this.i18n.t(ctx, "closed_mode"));
+                    return;
+                }
             }
         }
 
-        const {tg: user, aura: auraUser} = await this.user.getUser(ctx);
+        let user, auraUser;
+        try {
+            const result = await this.user.getUser(ctx);
+            user = result.tg;
+            auraUser = result.aura;
+        } catch (error: any) {
+            if (error.message === "BLACKLISTED") {
+                await ctx.reply(this.i18n.t(ctx, "blacklisted"));
+                return;
+            }
+            throw error;
+        }
         const isNewUser = !exists;
         
         if (inviter) {
@@ -126,7 +145,7 @@ export class BotService {
 
         if (user.level !== 'platinum') {
             kb.text(
-                `📦 ${user.auraId ? "Продлить" : "Купить"}`,
+                `📦 ${user.auraId ? this.i18n.t(ctx, "extend") : this.i18n.t(ctx, "buy")}`,
                 "buy",
             );
         }
@@ -139,20 +158,20 @@ export class BotService {
                 )
             ) {
                 kb.webApp(
-                    "✨ Подключиться",
+                    this.i18n.t(ctx, "connect"),
                     sub.response?.response.subscriptionUrl ?? "",
                 );
             }
         }
-        kb.row().text("👥 Пригласить друга", "ref");
+        kb.row().text(this.i18n.t(ctx, "invite_friend"), "ref");
 
         await ctx.reply(
-            `👋 Добро пожаловать, ${user.fullName || "пользователь"}!
+            `${this.i18n.t(ctx, "greeting", { name: user.fullName || this.i18n.t(ctx, "welcome").replace("👋 ", "") })}
         
-🔹 Уровень:<code> </code><b>${prettyLevel(user.level)}</b>
-⏳ Подписка:<code> ${auraUser?.expireAt ? formatExpire(auraUser.expireAt) : "не активна"}</code>
+${this.i18n.t(ctx, "level")}<code> </code><b>${prettyLevel(user.level)}</b>
+${this.i18n.t(ctx, "subscription")}<code> ${auraUser?.expireAt ? formatExpire(auraUser.expireAt) : this.i18n.t(ctx, "not_active")}</code>
         
-Выберите действие:`,
+${this.i18n.t(ctx, "select_action")}`,
             {
                 parse_mode: "HTML",
                 reply_markup: kb,
@@ -178,9 +197,7 @@ export class BotService {
 
         if (!args) {
             return ctx.reply(
-                "📖 Вы можете написать разработчикам через команду:\n" +
-                "<code>/help ваш_текст</code>\n\n" +
-                "Пример:\n<code>/help Не работает оплата</code>",
+                this.i18n.t(ctx, "help_command"),
                 {parse_mode: "HTML"},
             );
         }
@@ -196,7 +213,7 @@ export class BotService {
             `\n${args}`,
             {parse_mode: "HTML"},
         );
-        return ctx.reply("✅ Ваше сообщение отправлено разработчикам.");
+        return ctx.reply(this.i18n.t(ctx, "help_sent"));
     }
 
     @Command("reply")
@@ -208,19 +225,31 @@ export class BotService {
         const replyText = parts.join(" ").trim();
 
         if (!userId || !replyText) {
-            return ctx.reply("Использование: /reply <user_id> <текст>");
+            return ctx.reply(this.i18n.t(ctx, "reply_usage"));
         }
 
         try {
             await this.bot.api.sendMessage(userId!, replyText);
-            return ctx.reply("✅ Сообщение отправлено пользователю.");
+            return ctx.reply(this.i18n.t(ctx, "reply_sent"));
         } catch (e) {
-            return ctx.reply(`⚠️ Не удалось отправить сообщение: ${e}`);
+            return ctx.reply(this.i18n.t(ctx, "reply_error", { error: String(e) }));
         }
     }
 
     async handleUpdate(body: any) {
         await this.bot.handleUpdate(body);
+    }
+
+    private async isClosedModeEnabled(): Promise<boolean> {
+        try {
+            const value = await this.adminConfig.getConfigValue('CLOSED_MODE_ENABLED');
+            if (value !== null) {
+                return value === 'true';
+            }
+            return this.config.get<boolean>('CLOSED_MODE_ENABLED', false);
+        } catch (error) {
+            return this.config.get<boolean>('CLOSED_MODE_ENABLED', false);
+        }
     }
 
     private async notifyNewUser(user: User, inviter?: User): Promise<void> {

@@ -24,24 +24,24 @@ async function bootstrap() {
         
         // Helper function to check if request is for API
         const isApiRequest = (path: string): boolean => {
-            const apiPaths = [
-                '/admin/auth',
-                '/admin/users',
-                '/admin/purchases',
-                '/admin/analytics',
-                '/admin/promocodes',
-                '/admin/blacklist',
-                '/admin/referrals',
-                '/admin/stats',
-            ];
-            return apiPaths.some(apiPath => path.startsWith(apiPath));
+            return path.startsWith('/admin/auth') ||
+                   path.startsWith('/admin/users') ||
+                   path.startsWith('/admin/purchases') ||
+                   path.startsWith('/admin/analytics') ||
+                   path.startsWith('/admin/promocodes') ||
+                   path.startsWith('/admin/blacklist') ||
+                   path.startsWith('/admin/referrals') ||
+                   path.startsWith('/admin/stats') ||
+                   path.startsWith('/admin/config');
         };
         
-        // Middleware to skip static files for API requests
+        // Middleware to handle API requests - must be BEFORE static assets
         expressApp.use('/admin', (req: any, res: any, next: any) => {
+            // If it's an API request, let NestJS handle it
             if (isApiRequest(req.path)) {
-                return next(); // Let NestJS controllers handle API requests
+                return next();
             }
+            // Otherwise continue to static assets or SPA routing
             next();
         });
         
@@ -53,7 +53,6 @@ async function bootstrap() {
         
         // Serve admin panel index.html for SPA routes
         expressApp.get('/admin', (req: any, res: any, next: any) => {
-            // Let API requests pass through to NestJS controllers
             if (isApiRequest(req.path)) {
                 return next();
             }
@@ -61,12 +60,11 @@ async function bootstrap() {
         });
 
         expressApp.get('/admin/*', (req: any, res: any, next: any) => {
-            // Let API requests pass through to NestJS controllers
             if (isApiRequest(req.path)) {
                 return next();
             }
             
-            // If it's a file request (has extension), it should have been handled by static assets
+            // If it's a file request (has extension), let static assets handler deal with it
             if (req.path.match(/\.[^/]+$/)) {
                 return next();
             }
