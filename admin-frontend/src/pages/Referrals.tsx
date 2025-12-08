@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Container,
     Title,
@@ -44,7 +44,6 @@ export function ReferralsPage() {
     const [depth, setDepth] = useState(3);
     const [loading, setLoading] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
-    const graphRef = useRef<any>();
 
     const loadUsers = async () => {
         try {
@@ -88,13 +87,14 @@ export function ReferralsPage() {
     useEffect(() => {
         loadUsers();
         loadNetwork();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        if (selectedUserId !== null || depth !== 3) {
-            loadNetwork();
-        }
+        loadNetwork();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedUserId, depth]);
+
 
     const getLevelColor = (level: string): string => {
         switch (level) {
@@ -110,23 +110,6 @@ export function ReferralsPage() {
         }
     };
 
-    const nodePaint = (node: any, ctx: CanvasRenderingContext2D) => {
-        const { x, y } = node;
-        const size = 8;
-        const color = getLevelColor(node.level);
-
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, 2 * Math.PI);
-        ctx.fill();
-
-        // Draw label
-        ctx.fillStyle = '#fff';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(node.label.substring(0, 15), x, y - size - 10);
-    };
 
     if (loading && !network) {
         return (
@@ -211,7 +194,6 @@ export function ReferralsPage() {
                     </Text>
                     <div style={{ border: '1px solid #373a40', borderRadius: '8px', overflow: 'hidden' }}>
                         <ForceGraph2D
-                            ref={graphRef}
                             graphData={{
                                 nodes: network.nodes.map((n) => ({
                                     ...n,
@@ -223,22 +205,22 @@ export function ReferralsPage() {
                                     id: e.id,
                                 })),
                             }}
-                            nodeLabel={(node: any) =>
+                            nodeLabel={(node) =>
                                 `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                             }
-                            nodeColor={(node: any) => getLevelColor(node.level)}
-                            nodeVal={(node: any) => 8}
+                            nodeColor={(node) => getLevelColor(node.level)}
+                            nodeVal={() => 8}
                             linkDirectionalArrowLength={6}
                             linkDirectionalArrowRelPos={1}
                             linkWidth={2}
                             linkColor={() => 'rgba(255, 255, 255, 0.3)'}
                             backgroundColor="#1a1b1e"
-                            width={window.innerWidth - 100}
+                            width={typeof window !== 'undefined' ? window.innerWidth - 100 : 1200}
                             height={600}
-                            onNodeClick={(node: any) => {
+                            onNodeClick={(node) => {
                                 setSelectedUserId(node.id);
                             }}
-                            onNodeRightClick={(node: any) => {
+                            onNodeRightClick={() => {
                                 setSelectedUserId(null);
                             }}
                         />
