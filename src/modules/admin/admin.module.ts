@@ -8,8 +8,10 @@ import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminPromoCodesService } from './admin-promocodes.service';
 import { AdminBlacklistService } from './admin-blacklist.service';
 import { AdminReferralsService } from './admin-referrals.service';
+import { AxiosModule } from '@common/axios';
 
 @Module({
+    imports: [AxiosModule],
     controllers: [AdminController],
     providers: [
         AdminService,

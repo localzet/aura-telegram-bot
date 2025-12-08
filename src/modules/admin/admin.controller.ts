@@ -137,6 +137,12 @@ export class AdminController {
         return this.purchasesService.deletePurchase(id);
     }
 
+    @Post('purchases/cleanup')
+    @UseGuards(AdminAuthGuard)
+    async cleanupOldTransactions(@Body() body: { daysOld?: number }) {
+        return this.purchasesService.cleanupOldTransactions(body.daysOld || 7);
+    }
+
     // Analytics endpoints
     @Get('analytics/financial')
     @UseGuards(AdminAuthGuard)
@@ -160,6 +166,12 @@ export class AdminController {
     @UseGuards(AdminAuthGuard)
     async getLevelRating() {
         return this.analyticsService.getLevelRating();
+    }
+
+    @Get('analytics/users-by-month')
+    @UseGuards(AdminAuthGuard)
+    async getUsersByMonth() {
+        return this.analyticsService.getUsersByMonth();
     }
 
     // Promo codes endpoints

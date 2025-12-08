@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@common/services/prisma.service';
 import { UserLevel } from '@prisma/client';
+import { AxiosService } from '@common/axios';
 
 @Injectable()
 export class AdminUsersService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private axios: AxiosService,
+    ) {}
 
     async getUsers(page: number = 1, limit: number = 50, search?: string) {
         const skip = (page - 1) * limit;
@@ -38,12 +42,50 @@ export class AdminUsersService {
         ]);
 
         return {
-            data: users.map((user) => ({
-                ...user,
-                telegramId: user.telegramId.toString(),
-                referralsCount: user._count.referrals,
-                purchasesCount: user._count.purchase,
-            })),
+            data: await Promise.all(
+                users.map(async (user) => {
+                    const telegramLink = user.username
+                        ? `https://t.me/${user.username}`
+                        : `tg://user?id=${user.telegramId}`;
+                    
+                    // Получаем информацию о подписке из Aura API
+                    let subscriptionInfo: any = null;
+                    if (user.auraId) {
+                        try {
+                            const auraUser = await this.axios.getUserByUuid(user.auraId);
+                            if (auraUser.isOk && auraUser.response) {
+                                const auraData = auraUser.response.response;
+                                const now = new Date();
+                                const expireAt = auraData.expireAt ? new Date(auraData.expireAt) : null;
+                                
+                                subscriptionInfo = {
+                                    isActive: auraData.status === 'ACTIVE' && 
+                                        (!expireAt || expireAt > now),
+                                    expireAt: expireAt,
+                                    status: auraData.status,
+                                    daysRemaining: expireAt 
+                                        ? Math.max(0, Math.ceil((expireAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+                                        : null,
+                                    daysExpired: expireAt && expireAt < now
+                                        ? Math.ceil((now.getTime() - expireAt.getTime()) / (1000 * 60 * 60 * 24))
+                                        : null,
+                                };
+                            }
+                        } catch (error) {
+                            // Игнорируем ошибки получения данных из Aura
+                        }
+                    }
+
+                    return {
+                        ...user,
+                        telegramId: user.telegramId.toString(),
+                        telegramLink,
+                        referralsCount: user._count.referrals,
+                        purchasesCount: user._count.purchase,
+                        subscriptionInfo,
+                    };
+                }),
+            ),
             total,
             page,
             limit,
@@ -91,9 +133,43 @@ export class AdminUsersService {
             return null;
         }
 
+        const telegramLink = user.username
+            ? `https://t.me/${user.username}`
+            : `tg://user?id=${user.telegramId}`;
+
+        // Получаем информацию о подписке из Aura API
+        let subscriptionInfo: any = null;
+        if (user.auraId) {
+            try {
+                const auraUser = await this.axios.getUserByUuid(user.auraId);
+                if (auraUser.isOk && auraUser.response) {
+                    const auraData = auraUser.response.response;
+                    const now = new Date();
+                    const expireAt = auraData.expireAt ? new Date(auraData.expireAt) : null;
+                    
+                    subscriptionInfo = {
+                        isActive: auraData.status === 'ACTIVE' && 
+                            (!expireAt || expireAt > now),
+                        expireAt: expireAt,
+                        status: auraData.status,
+                        daysRemaining: expireAt 
+                            ? Math.max(0, Math.ceil((expireAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+                            : null,
+                        daysExpired: expireAt && expireAt < now
+                            ? Math.ceil((now.getTime() - expireAt.getTime()) / (1000 * 60 * 60 * 24))
+                            : null,
+                    };
+                }
+            } catch (error) {
+                // Игнорируем ошибки получения данных из Aura
+            }
+        }
+
         return {
             ...user,
             telegramId: user.telegramId.toString(),
+            telegramLink,
+            subscriptionInfo,
         };
     }
 

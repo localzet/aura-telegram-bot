@@ -94,5 +94,29 @@ export class AdminPurchasesService {
             where: { id },
         });
     }
+
+    async cleanupOldTransactions(daysOld: number = 7) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+        const result = await this.prisma.purchase.updateMany({
+            where: {
+                status: {
+                    in: ['new', 'pending'],
+                },
+                createdAt: {
+                    lt: cutoffDate,
+                },
+            },
+            data: {
+                status: 'cancel',
+            },
+        });
+
+        return {
+            updated: result.count,
+            message: `Marked ${result.count} old transactions as cancelled`,
+        };
+    }
 }
 

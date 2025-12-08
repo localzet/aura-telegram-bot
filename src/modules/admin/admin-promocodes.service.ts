@@ -65,7 +65,9 @@ export class AdminPromoCodesService {
 
     async createPromoCode(data: {
         code: string;
-        discount: number;
+        type?: 'discount' | 'level';
+        discount?: number;
+        level?: string;
         maxUses?: number;
         expiresAt?: Date;
         description?: string;
@@ -78,16 +80,32 @@ export class AdminPromoCodesService {
             throw new BadRequestException('Promo code already exists');
         }
 
+        const createData: any = {
+            code: data.code,
+            type: data.type || 'discount',
+            isActive: true,
+        };
+
+        if (data.type === 'level') {
+            createData.level = data.level;
+            createData.discount = 0;
+        } else {
+            createData.discount = data.discount || 0;
+        }
+
+        if (data.maxUses !== undefined) createData.maxUses = data.maxUses;
+        if (data.expiresAt) createData.expiresAt = data.expiresAt;
+        if (data.description) createData.description = data.description;
+
         return this.prisma.promoCode.create({
-            data: {
-                ...data,
-                isActive: true,
-            },
+            data: createData,
         });
     }
 
     async updatePromoCode(id: string, data: {
+        type?: 'discount' | 'level';
         discount?: number;
+        level?: string;
         maxUses?: number;
         expiresAt?: Date | null;
         isActive?: boolean;
@@ -101,9 +119,19 @@ export class AdminPromoCodesService {
             throw new NotFoundException('Promo code not found');
         }
 
+        const updateData: any = {};
+        
+        if (data.type !== undefined) updateData.type = data.type;
+        if (data.level !== undefined) updateData.level = data.level;
+        if (data.discount !== undefined) updateData.discount = data.discount;
+        if (data.maxUses !== undefined) updateData.maxUses = data.maxUses;
+        if (data.expiresAt !== undefined) updateData.expiresAt = data.expiresAt;
+        if (data.isActive !== undefined) updateData.isActive = data.isActive;
+        if (data.description !== undefined) updateData.description = data.description;
+
         return this.prisma.promoCode.update({
             where: { id },
-            data,
+            data: updateData,
         });
     }
 
@@ -115,7 +143,9 @@ export class AdminPromoCodesService {
 
     async validatePromoCode(code: string): Promise<{
         valid: boolean;
-        discount: number;
+        discount?: number;
+        level?: string;
+        type?: string;
         message?: string;
     }> {
         const promoCode = await this.prisma.promoCode.findUnique({
@@ -123,22 +153,34 @@ export class AdminPromoCodesService {
         });
 
         if (!promoCode) {
-            return { valid: false, discount: 0, message: 'Promo code not found' };
+            return { valid: false, message: 'Promo code not found' };
         }
 
         if (!promoCode.isActive) {
-            return { valid: false, discount: 0, message: 'Promo code is inactive' };
+            return { valid: false, message: 'Promo code is inactive' };
         }
 
         if (promoCode.expiresAt && promoCode.expiresAt < new Date()) {
-            return { valid: false, discount: 0, message: 'Promo code expired' };
+            return { valid: false, message: 'Promo code expired' };
         }
 
         if (promoCode.maxUses && promoCode.usedCount >= promoCode.maxUses) {
-            return { valid: false, discount: 0, message: 'Promo code usage limit reached' };
+            return { valid: false, message: 'Promo code usage limit reached' };
         }
 
-        return { valid: true, discount: promoCode.discount };
+        if (promoCode.type === 'level') {
+            return { 
+                valid: true, 
+                type: 'level',
+                level: promoCode.level || undefined,
+            };
+        }
+
+        return { 
+            valid: true, 
+            type: 'discount',
+            discount: promoCode.discount,
+        };
     }
 }
 

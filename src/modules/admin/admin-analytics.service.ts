@@ -69,6 +69,50 @@ export class AdminAnalyticsService {
         };
     }
 
+    async getUsersByMonth() {
+        // Получаем все оплаченные транзакции с информацией о пользователях
+        const purchases = await this.prisma.purchase.findMany({
+            where: { status: 'paid' },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        createdAt: true,
+                    },
+                },
+            },
+            orderBy: { paidAt: 'asc' },
+        });
+
+        // Группируем новых пользователей по месяцам на основе даты первой оплаты
+        const newUsersByMonth: Record<string, Set<string>> = {};
+        const userFirstPurchase: Record<string, Date> = {};
+
+        purchases.forEach((purchase) => {
+            if (!purchase.paidAt || !purchase.user) return;
+
+            const paidDate = new Date(purchase.paidAt);
+            const monthKey = paidDate.toISOString().substring(0, 7); // YYYY-MM
+
+            // Если это первая покупка пользователя, считаем его новым пользователем в этом месяце
+            if (!userFirstPurchase[purchase.userId]) {
+                userFirstPurchase[purchase.userId] = paidDate;
+                if (!newUsersByMonth[monthKey]) {
+                    newUsersByMonth[monthKey] = new Set();
+                }
+                newUsersByMonth[monthKey].add(purchase.userId);
+            }
+        });
+
+        // Преобразуем Set в количество
+        const result: Record<string, number> = {};
+        Object.keys(newUsersByMonth).forEach((month) => {
+            result[month] = newUsersByMonth[month].size;
+        });
+
+        return result;
+    }
+
     async getTariffRating() {
         const purchases = await this.prisma.purchase.findMany({
             where: { status: 'paid' },
