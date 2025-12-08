@@ -1,54 +1,65 @@
-import {CallbackQuery, Ctx, InjectBot, On, Update,} from "@localzet/grammy-nestjs";
-import {Logger, UseFilters, UseInterceptors} from "@nestjs/common";
-import {Bot, Context, InlineKeyboard} from "grammy";
-import {BotName} from "@modules/bot/bot.constants";
-import {ResponseTimeInterceptor} from "@common/interceptors";
-import {GrammyExceptionFilter} from "@common/filters";
-import {PrismaService} from "@common/services/prisma.service";
-import {getPrice} from "@common/utils/discount";
-import {ConfigService} from "@nestjs/config";
-import {UserService} from "@common/services/user.service";
-import {prettyLevel} from "@common/utils";
-import {I18nService} from "@common/i18n";
+import {
+  CallbackQuery,
+  Ctx,
+  InjectBot,
+  On,
+  Update,
+} from "@localzet/grammy-nestjs";
+import { Logger, UseFilters, UseInterceptors } from "@nestjs/common";
+import { Bot, Context, InlineKeyboard } from "grammy";
+import { BotName } from "@modules/bot/bot.constants";
+import { ResponseTimeInterceptor } from "@common/interceptors";
+import { GrammyExceptionFilter } from "@common/filters";
+import { PrismaService } from "@common/services/prisma.service";
+import { getPrice } from "@common/utils/discount";
+import { ConfigService } from "@nestjs/config";
+import { UserService } from "@common/services/user.service";
+import { prettyLevel } from "@common/utils";
+import { I18nService } from "@common/i18n";
 
 @Update()
 @UseInterceptors(ResponseTimeInterceptor)
 @UseFilters(GrammyExceptionFilter)
 export class BuyService {
-    private readonly logger = new Logger(BuyService.name);
+  private readonly logger = new Logger(BuyService.name);
 
-    constructor(
-        @InjectBot(BotName)
-        private readonly bot: Bot<Context>,
-        private readonly config: ConfigService,
-        private readonly prisma: PrismaService,
-        private readonly user: UserService,
-        private readonly i18n: I18nService,
-    ) {
-    }
+  constructor(
+    @InjectBot(BotName)
+    private readonly bot: Bot<Context>,
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly user: UserService,
+    private readonly i18n: I18nService,
+  ) {}
 
-    @CallbackQuery("buy")
-    async onBuy(@Ctx() ctx: Context): Promise<void> {
-        try {
-            let user;
-            try {
-                const result = await this.user.getUser(ctx);
-                user = result.tg;
-            } catch (error: any) {
-                if (error.message === "BLACKLISTED") {
-                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
-                    return;
-                }
-                throw error;
-            }
+  @CallbackQuery("buy")
+  async onBuy(@Ctx() ctx: Context): Promise<void> {
+    try {
+      let user;
+      try {
+        const result = await this.user.getUser(ctx);
+        user = result.tg;
+      } catch (error: any) {
+        if (error.message === "BLACKLISTED") {
+          await ctx.answerCallbackQuery({
+            text: this.i18n.t(ctx, "blacklisted"),
+            show_alert: true,
+          });
+          return;
+        }
+        throw error;
+      }
 
-            const {
-                firstDiscount,
-            } = await getPrice(1, user, this.prisma, this.config)
+      const { firstDiscount } = await getPrice(
+        1,
+        user,
+        this.prisma,
+        this.config,
+      );
 
-            await ctx.answerCallbackQuery();
-            await ctx.editMessageText(
-                `${this.i18n.t(ctx, "select_tariff")}
+      await ctx.answerCallbackQuery();
+      await ctx.editMessageText(
+        `${this.i18n.t(ctx, "select_tariff")}
 <code>
 1 ${this.i18n.t(ctx, "month")}     ${this.calcPrice(1)}р
 3 ${this.i18n.t(ctx, "months")}    ${this.calcPrice(3)}р (-15%)
@@ -57,242 +68,252 @@ export class BuyService {
 </code>
 ${this.i18n.t(ctx, "your_discount", { discount: firstDiscount })}
         `,
-                {
-                    reply_markup: new InlineKeyboard()
-                        .text(`1 ${this.i18n.t(ctx, "month")}`, "buy_plan_1")
-                        .text(`3 ${this.i18n.t(ctx, "months")}`, "buy_plan_3")
-                        .row()
-                        .text(`6 ${this.i18n.t(ctx, "months")}`, "buy_plan_6")
-                        .text(`12 ${this.i18n.t(ctx, "months")}`, "buy_plan_12"),
-                    parse_mode: "HTML",
-                },
-            );
-        } catch (err: any) {
-            this.logger.error(
-                `Ошибка при отображении тарифов: ${err.message}`,
-                err.stack,
-            );
-            await this.notifyDev(`💥 Ошибка pre_checkout
+        {
+          reply_markup: new InlineKeyboard()
+            .text(`1 ${this.i18n.t(ctx, "month")}`, "buy_plan_1")
+            .text(`3 ${this.i18n.t(ctx, "months")}`, "buy_plan_3")
+            .row()
+            .text(`6 ${this.i18n.t(ctx, "months")}`, "buy_plan_6")
+            .text(`12 ${this.i18n.t(ctx, "months")}`, "buy_plan_12"),
+          parse_mode: "HTML",
+        },
+      );
+    } catch (err: any) {
+      this.logger.error(
+        `Ошибка при отображении тарифов: ${err.message}`,
+        err.stack,
+      );
+      await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
-            await ctx.reply(
-                this.i18n.t(ctx, "error_loading_tariffs"),
-            );
-        }
+      await ctx.reply(this.i18n.t(ctx, "error_loading_tariffs"));
     }
+  }
 
-    @CallbackQuery(/^buy_plan_(\d+)$/)
-    async onPlanSelect(@Ctx() ctx: Context): Promise<void> {
-        try {
-            const months = Number(ctx.match?.[1]);
-            if (!months) return;
+  @CallbackQuery(/^buy_plan_(\d+)$/)
+  async onPlanSelect(@Ctx() ctx: Context): Promise<void> {
+    try {
+      const months = Number(ctx.match?.[1]);
+      if (!months) return;
 
-            let user;
-            try {
-                const result = await this.user.getUser(ctx);
-                user = result.tg;
-            } catch (error: any) {
-                if (error.message === "BLACKLISTED") {
-                    await ctx.answerCallbackQuery({ text: this.i18n.t(ctx, "blacklisted"), show_alert: true });
-                    return;
-                }
-                throw error;
-            }
-            const {price} = await getPrice(months, user, this.prisma, this.config);
+      let user;
+      try {
+        const result = await this.user.getUser(ctx);
+        user = result.tg;
+      } catch (error: any) {
+        if (error.message === "BLACKLISTED") {
+          await ctx.answerCallbackQuery({
+            text: this.i18n.t(ctx, "blacklisted"),
+            show_alert: true,
+          });
+          return;
+        }
+        throw error;
+      }
+      const { price } = await getPrice(months, user, this.prisma, this.config);
 
-            await ctx.answerCallbackQuery();
+      await ctx.answerCallbackQuery();
 
-            const purchase = await this.prisma.purchase.create({
-                data: {
-                    userId: user.id,
-                    type: "yookasa",
-                    status: "new",
-                    amount: price,
-                    currency: "RUB",
-                    month: months,
-                },
-            });
+      const purchase = await this.prisma.purchase.create({
+        data: {
+          userId: user.id,
+          type: "yookasa",
+          status: "new",
+          amount: price,
+          currency: "RUB",
+          month: months,
+        },
+      });
 
-            const monthText = months === 1 
-                ? this.i18n.t(ctx, "month") 
-                : this.i18n.t(ctx, "months");
-            await this.bot.api.sendInvoice(
-                user.telegramId.toString(),
-                `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
-                "Защита интернет-соединения",
-                purchase.id,
-                "RUB",
-                [
-                    {
-                        label: `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
-                        amount: Math.round(price * 100),
-                    },
-                ],
-                {
-                    provider_token: this.config.getOrThrow<string>("YOOKASSA_TOKEN"),
-                    protect_content: true,
-                },
-            );
-        } catch (err: any) {
-            this.logger.error(`Ошибка при выборе плана: ${err.message}`, err.stack);
-            await this.notifyDev(`💥 Ошибка pre_checkout
+      const monthText =
+        months === 1 ? this.i18n.t(ctx, "month") : this.i18n.t(ctx, "months");
+      await this.bot.api.sendInvoice(
+        user.telegramId.toString(),
+        `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
+        "Защита интернет-соединения",
+        purchase.id,
+        "RUB",
+        [
+          {
+            label: `${this.i18n.t(ctx, "subscription")} ${months} ${monthText}`,
+            amount: Math.round(price * 100),
+          },
+        ],
+        {
+          provider_token: this.config.getOrThrow<string>("YOOKASSA_TOKEN"),
+          protect_content: true,
+        },
+      );
+    } catch (err: any) {
+      this.logger.error(`Ошибка при выборе плана: ${err.message}`, err.stack);
+      await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
-            await ctx.reply(this.i18n.t(ctx, "error_creating_order"));
-        }
+      await ctx.reply(this.i18n.t(ctx, "error_creating_order"));
     }
+  }
 
-    @On("pre_checkout_query")
-    async checkout(@Ctx() ctx: Context): Promise<void> {
-        try {
-            try {
-                await this.user.getUser(ctx);
-            } catch (error: any) {
-                if (error.message === "BLACKLISTED") {
-                    await ctx.answerPreCheckoutQuery(false, {
-                        error_message: this.i18n.t(ctx, "blacklisted"),
-                    });
-                    return;
-                }
-                throw error;
-            }
+  @On("pre_checkout_query")
+  async checkout(@Ctx() ctx: Context): Promise<void> {
+    try {
+      try {
+        await this.user.getUser(ctx);
+      } catch (error: any) {
+        if (error.message === "BLACKLISTED") {
+          await ctx.answerPreCheckoutQuery(false, {
+            error_message: this.i18n.t(ctx, "blacklisted"),
+          });
+          return;
+        }
+        throw error;
+      }
 
-            const payload = ctx.preCheckoutQuery?.invoice_payload;
-            const purchase = await this.prisma.purchase.findUnique({
-                where: {id: payload},
-            });
+      const payload = ctx.preCheckoutQuery?.invoice_payload;
+      const purchase = await this.prisma.purchase.findUnique({
+        where: { id: payload },
+      });
 
-            if (!purchase || purchase.status !== "new") {
-                await ctx.answerPreCheckoutQuery(false, {
-                    error_message: "Платёж не найден или уже обработан",
-                });
-                return;
-            }
+      if (!purchase || purchase.status !== "new") {
+        await ctx.answerPreCheckoutQuery(false, {
+          error_message: "Платёж не найден или уже обработан",
+        });
+        return;
+      }
 
-            let auraUser;
-            try {
-                const result = await this.user.getUser(ctx);
-                auraUser = result.aura;
-            } catch (error: any) {
-                if (error.message === "BLACKLISTED") {
-                    await ctx.answerPreCheckoutQuery(false, {
-                        error_message: this.i18n.t(ctx, "blacklisted"),
-                    });
-                    return;
-                }
-                throw error;
-            }
-            const months = purchase?.month;
-            if (!months) {
-                this.logger.warn(`Не найден срок подписки для платежа ${payload}`);
-                return;
-            }
+      let auraUser;
+      try {
+        const result = await this.user.getUser(ctx);
+        auraUser = result.aura;
+      } catch (error: any) {
+        if (error.message === "BLACKLISTED") {
+          await ctx.answerPreCheckoutQuery(false, {
+            error_message: this.i18n.t(ctx, "blacklisted"),
+          });
+          return;
+        }
+        throw error;
+      }
+      const months = purchase?.month;
+      if (!months) {
+        this.logger.warn(`Не найден срок подписки для платежа ${payload}`);
+        return;
+      }
 
-            const success = auraUser
-                ? await this.extendSubscription(ctx, auraUser.expireAt, months)
-                : await this.createSubscription(ctx, months);
+      const success = auraUser
+        ? await this.extendSubscription(ctx, auraUser.expireAt, months)
+        : await this.createSubscription(ctx, months);
 
-            if (!success) {
-                const errMsg = `❌ Ошибка подготовки аккаунта в Aura
+      if (!success) {
+        const errMsg = `❌ Ошибка подготовки аккаунта в Aura
 <b>User:</b> ${ctx.from?.id}
 <b>Purchase:</b> ${purchase.id}
 <b>Months:</b> ${months}`;
-                await this.notifyDev(errMsg);
+        await this.notifyDev(errMsg);
 
-                await ctx.answerPreCheckoutQuery(false, {
-                    error_message: "Не удалось подготовить аккаунт. Попробуйте позже.",
-                });
-                return;
-            }
+        await ctx.answerPreCheckoutQuery(false, {
+          error_message: "Не удалось подготовить аккаунт. Попробуйте позже.",
+        });
+        return;
+      }
 
-            await this.prisma.purchase.update({
-                where: {id: purchase.id},
-                data: {status: "pending"},
-            });
-            await ctx.answerPreCheckoutQuery(true);
-        } catch (err: any) {
-            this.logger.error(`Ошибка при pre_checkout: ${err.message}`, err.stack);
-            await this.notifyDev(`💥 Ошибка pre_checkout
+      await this.prisma.purchase.update({
+        where: { id: purchase.id },
+        data: { status: "pending" },
+      });
+      await ctx.answerPreCheckoutQuery(true);
+    } catch (err: any) {
+      this.logger.error(`Ошибка при pre_checkout: ${err.message}`, err.stack);
+      await this.notifyDev(`💥 Ошибка pre_checkout
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
-            await ctx.answerPreCheckoutQuery(false, {
-                error_message: "Ошибка при обработке платежа",
+      await ctx.answerPreCheckoutQuery(false, {
+        error_message: "Ошибка при обработке платежа",
+      });
+    }
+  }
+
+  @On("message:successful_payment")
+  async successfulPayment(@Ctx() ctx: Context): Promise<void> {
+    try {
+      let user, auraUser;
+      try {
+        const result = await this.user.getUser(ctx);
+        user = result.tg;
+        auraUser = result.aura;
+      } catch (error: any) {
+        if (error.message === "BLACKLISTED") {
+          // Платеж уже прошел, но пользователь в черном списке
+          this.logger.warn(
+            `Blacklisted user attempted payment: ${ctx.from?.id}`,
+          );
+          return;
+        }
+        throw error;
+      }
+      const payment = ctx.message?.successful_payment;
+
+      const purchase = await this.prisma.purchase.findUnique({
+        where: { id: payment?.invoice_payload },
+      });
+
+      if (!purchase) {
+        this.logger.warn(`Purchase not found: ${payment?.invoice_payload}`);
+        await ctx.reply("⚠️ Платеж не найден в системе.");
+        return;
+      }
+
+      // Используем транзакцию для атомарного обновления Purchase
+      await this.prisma.$transaction(async (tx) => {
+        await tx.purchase.update({
+          where: { id: payment?.invoice_payload },
+          data: {
+            status: "paid",
+            telegramId: payment?.telegram_payment_charge_id,
+            yookasaId: payment?.provider_payment_charge_id,
+            paidAt: new Date(),
+          },
+        });
+      });
+
+      // Уведомления отправляем после успешного обновления БД
+      const ref = await this.prisma.referral.findUnique({
+        where: { invitedId: user.id },
+        include: { inviter: true },
+      });
+      if (ref) {
+        const ps = await this.prisma.purchase.count({
+          where: { userId: user.id },
+        });
+        if (ps && ps == 1) {
+          // Отправка уведомления рефералу - не критично, можно асинхронно
+          this.bot.api
+            .sendMessage(
+              ref.inviter.telegramId.toString(),
+              `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
+              { parse_mode: "HTML" },
+            )
+            .catch((err) => {
+              this.logger.warn(
+                `Не удалось отправить уведомление рефералу: ${err.message}`,
+              );
             });
         }
-    }
+      }
 
-    @On("message:successful_payment")
-    async successfulPayment(@Ctx() ctx: Context): Promise<void> {
-        try {
-            let user, auraUser;
-            try {
-                const result = await this.user.getUser(ctx);
-                user = result.tg;
-                auraUser = result.aura;
-            } catch (error: any) {
-                if (error.message === "BLACKLISTED") {
-                    // Платеж уже прошел, но пользователь в черном списке
-                    this.logger.warn(`Blacklisted user attempted payment: ${ctx.from?.id}`);
-                    return;
-                }
-                throw error;
-            }
-            const payment = ctx.message?.successful_payment;
+      const expireDate = auraUser?.expireAt
+        ? new Date(auraUser.expireAt)
+        : null;
 
-            const purchase = await this.prisma.purchase.findUnique({
-                where: {id: payment?.invoice_payload},
-            });
-
-            if (!purchase) {
-                this.logger.warn(`Purchase not found: ${payment?.invoice_payload}`);
-                await ctx.reply("⚠️ Платеж не найден в системе.");
-                return;
-            }
-
-            // Используем транзакцию для атомарного обновления Purchase
-            await this.prisma.$transaction(async (tx) => {
-                await tx.purchase.update({
-                    where: {id: payment?.invoice_payload},
-                    data: {
-                        status: "paid",
-                        telegramId: payment?.telegram_payment_charge_id,
-                        yookasaId: payment?.provider_payment_charge_id,
-                        paidAt: new Date(),
-                    },
-                });
-            });
-
-            // Уведомления отправляем после успешного обновления БД
-            const ref = await this.prisma.referral.findUnique({
-                where: {invitedId: user.id},
-                include: {inviter: true}
-            });
-            if (ref) {
-                const ps = await this.prisma.purchase.count({where: {userId: user.id}});
-                if (ps && ps == 1) {
-                    // Отправка уведомления рефералу - не критично, можно асинхронно
-                    this.bot.api.sendMessage(
-                        ref.inviter.telegramId.toString(),
-                        `🎉 Пользователь <b>${user.fullName || user.username || user.telegramId.toString()}</b> зарегистрировался по вашей ссылке!`,
-                        {parse_mode: "HTML"},
-                    ).catch((err) => {
-                        this.logger.warn(`Не удалось отправить уведомление рефералу: ${err.message}`);
-                    });
-                }
-            }
-
-            const expireDate = auraUser?.expireAt
-                ? new Date(auraUser.expireAt)
-                : null;
-
-            if (expireDate) {
-                // Уведомление о продлении подписки
-                const userName = user.fullName || user.username || 'Без имени';
-                const userUsername = user.username ? `@${user.username}` : 'без username';
-                // Проверяем, была ли у пользователя уже подписка (auraUser существует)
-                const wasExtended = !!auraUser;
-                const action = wasExtended ? "продлил" : "оформил";
-                const notification = `💰 ${action === "продлил" ? "Продление" : "Новая"} подписка
+      if (expireDate) {
+        // Уведомление о продлении подписки
+        const userName = user.fullName || user.username || "Без имени";
+        const userUsername = user.username
+          ? `@${user.username}`
+          : "без username";
+        // Проверяем, была ли у пользователя уже подписка (auraUser существует)
+        const wasExtended = !!auraUser;
+        const action = wasExtended ? "продлил" : "оформил";
+        const notification = `💰 ${action === "продлил" ? "Продление" : "Новая"} подписка
 
 👤 <b>Пользователь:</b> ${userName}
    ${userUsername}
@@ -302,92 +323,92 @@ ${this.i18n.t(ctx, "your_discount", { discount: firstDiscount })}
 
 💵 <b>Сумма:</b> ${purchase.amount.toFixed(2)} ${purchase.currency}
 
-📦 <b>Период:</b> ${purchase.month} ${purchase.month === 1 ? 'месяц' : purchase.month < 5 ? 'месяца' : 'месяцев'}
+📦 <b>Период:</b> ${purchase.month} ${purchase.month === 1 ? "месяц" : purchase.month < 5 ? "месяца" : "месяцев"}
 
 📆 <b>Подписка до:</b> ${expireDate.toLocaleDateString("ru-RU")}
 
 🆔 <b>Purchase ID:</b> <code>${purchase.id}</code>`;
 
-                await this.notifyDev(notification);
+        await this.notifyDev(notification);
 
-            await ctx.reply(
-                this.i18n.t(ctx, "payment_success", { date: expireDate.toLocaleDateString("ru-RU") }),
-            );
-            } else {
-                await this
-                    .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
+        await ctx.reply(
+          this.i18n.t(ctx, "payment_success", {
+            date: expireDate.toLocaleDateString("ru-RU"),
+          }),
+        );
+      } else {
+        await this
+          .notifyDev(`⚠️ Оплата прошла, но дата окончания подписки не найдена
 <b>User:</b> ${ctx.from?.id}
 <b>Purchase:</b> ${payment?.invoice_payload}`);
 
-                await ctx.reply(
-                    "⚠️ Ошибка при активации подписки в системе Aura Continental",
-                );
-            }
-        } catch (err: any) {
-            this.logger.error(
-                `Ошибка при обработке успешного платежа: ${err.message}`,
-                err.stack,
-            );
-            await this.notifyDev(`💥 Ошибка при обработке платежа
+        await ctx.reply(
+          "⚠️ Ошибка при активации подписки в системе Aura Continental",
+        );
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `Ошибка при обработке успешного платежа: ${err.message}`,
+        err.stack,
+      );
+      await this.notifyDev(`💥 Ошибка при обработке платежа
 <b>User:</b> ${ctx.from?.id}
 <pre>${err.message}</pre>`);
-            await ctx.reply(
-                this.i18n.t(ctx, "payment_error"),
-            );
-        }
+      await ctx.reply(this.i18n.t(ctx, "payment_error"));
     }
+  }
 
-    private calcPrice(months: number): number {
-        const base = 180;
-        const discount =
-            months >= 12 ? 0.75 : months >= 6 ? 0.8 : months >= 3 ? 0.85 : 1;
-        return base * months * discount;
+  private calcPrice(months: number): number {
+    const base = 180;
+    const discount =
+      months >= 12 ? 0.75 : months >= 6 ? 0.8 : months >= 3 ? 0.85 : 1;
+    return base * months * discount;
+  }
+
+  private async extendSubscription(
+    ctx: Context,
+    expireAt: Date | null,
+    months: number,
+  ): Promise<Date | null> {
+    const today = this.today();
+    const current = expireAt ? new Date(expireAt) : today;
+    const base = current > today ? current : today;
+    const ends = new Date(base);
+    ends.setMonth(ends.getMonth() + months);
+
+    return (await this.user.updateAuraUser(ctx, ends)) ? ends : null;
+  }
+
+  private async createSubscription(
+    ctx: Context,
+    months: number,
+  ): Promise<Date | null> {
+    const today = this.today();
+    const ends = new Date(today);
+    ends.setMonth(ends.getMonth() + months);
+    return (await this.user.createAuraUser(ctx, ends)) ? ends : null;
+  }
+
+  private today(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  private async notifyDev(message: string): Promise<void> {
+    try {
+      const adminId = this.config.getOrThrow<number>("ADMIN_TG_ID");
+      if (!adminId) {
+        this.logger.warn(
+          "ADMIN_TG_ID не задан в конфиге, уведомление не отправлено",
+        );
+        return;
+      }
+      await this.bot.api.sendMessage(adminId, message, { parse_mode: "HTML" });
+    } catch (e: any) {
+      this.logger.error(
+        `Не удалось отправить уведомление разработчику: ${e.message}`,
+        e.stack,
+      );
     }
-
-    private async extendSubscription(
-        ctx: Context,
-        expireAt: Date | null,
-        months: number,
-    ): Promise<Date | null> {
-        const today = this.today();
-        const current = expireAt ? new Date(expireAt) : today;
-        const base = current > today ? current : today;
-        const ends = new Date(base);
-        ends.setMonth(ends.getMonth() + months);
-
-        return (await this.user.updateAuraUser(ctx, ends)) ? ends : null;
-    }
-
-    private async createSubscription(
-        ctx: Context,
-        months: number,
-    ): Promise<Date | null> {
-        const today = this.today();
-        const ends = new Date(today);
-        ends.setMonth(ends.getMonth() + months);
-        return (await this.user.createAuraUser(ctx, ends)) ? ends : null;
-    }
-
-    private today(): Date {
-        const now = new Date();
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    }
-
-    private async notifyDev(message: string): Promise<void> {
-        try {
-            const adminId = this.config.getOrThrow<number>("ADMIN_TG_ID");
-            if (!adminId) {
-                this.logger.warn(
-                    "ADMIN_TG_ID не задан в конфиге, уведомление не отправлено",
-                );
-                return;
-            }
-            await this.bot.api.sendMessage(adminId, message, {parse_mode: "HTML"});
-        } catch (e: any) {
-            this.logger.error(
-                `Не удалось отправить уведомление разработчику: ${e.message}`,
-                e.stack,
-            );
-        }
-    }
+  }
 }
