@@ -35,13 +35,15 @@ COPY admin-frontend .
 
 RUN npm run build
 
-# Move admin build to backend dist
+# Keep admin-frontend for serving on separate port in production
+# Don't copy to backend dist - it will be served separately via vite preview
 WORKDIR /opt/app
 
-RUN cp -r admin-frontend/dist dist/admin
+# Install production dependencies for backend
+RUN npm ci --omit=dev
 
-# Cleanup
-RUN rm -rf admin-frontend node_modules
+# Keep admin-frontend node_modules for vite preview
+RUN npm cache clean --force
 
 WORKDIR /opt/app
 

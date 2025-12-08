@@ -232,7 +232,16 @@ export function ReferralsPage() {
                                         `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                                     }
                                     nodeColor={(node) => getLevelColor(node.level)}
-                                    nodeVal={() => 12}
+                                    nodeVal={(node: any) => {
+                                        // Размер узла зависит от уровня
+                                        const sizeMap: Record<string, number> = {
+                                            platinum: 20,
+                                            aurum: 15,
+                                            argentum: 12,
+                                            ferrum: 10,
+                                        };
+                                        return sizeMap[node.level] || 10;
+                                    }}
                                     nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
                                         const label = node.username || node.telegramId?.toString() || node.id;
                                         const fontSize = Math.max(8, 12 / globalScale);
@@ -283,7 +292,16 @@ export function ReferralsPage() {
                                         `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                                     }
                                     nodeColor={(node) => getLevelColor(node.level)}
-                                    nodeVal={() => 8}
+                                    nodeVal={(node: any) => {
+                                        // Размер узла зависит от уровня
+                                        const sizeMap: Record<string, number> = {
+                                            platinum: 15,
+                                            aurum: 12,
+                                            argentum: 10,
+                                            ferrum: 8,
+                                        };
+                                        return sizeMap[node.level] || 8;
+                                    }}
                                     nodeThreeObject={(node: any) => {
                                         const sprite = new THREE.Sprite(
                                             new THREE.SpriteMaterial({
@@ -370,7 +388,16 @@ export function ReferralsPage() {
                                         `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                                     }
                                     nodeColor={(node) => getLevelColor(node.level)}
-                                    nodeVal={() => 12}
+                                    nodeVal={(node: any) => {
+                                        // Размер узла зависит от уровня
+                                        const sizeMap: Record<string, number> = {
+                                            platinum: 20,
+                                            aurum: 15,
+                                            argentum: 12,
+                                            ferrum: 10,
+                                        };
+                                        return sizeMap[node.level] || 10;
+                                    }}
                                     nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
                                         const label = node.username || node.telegramId?.toString() || node.id;
                                         const fontSize = Math.max(8, 12 / globalScale);
@@ -421,7 +448,16 @@ export function ReferralsPage() {
                                         `${node.label}\nTelegram ID: ${node.telegramId}\nУровень: ${node.level}`
                                     }
                                     nodeColor={(node) => getLevelColor(node.level)}
-                                    nodeVal={() => 8}
+                                    nodeVal={(node: any) => {
+                                        // Размер узла зависит от уровня
+                                        const sizeMap: Record<string, number> = {
+                                            platinum: 15,
+                                            aurum: 12,
+                                            argentum: 10,
+                                            ferrum: 8,
+                                        };
+                                        return sizeMap[node.level] || 8;
+                                    }}
                                     nodeThreeObject={(node: any) => {
                                         const sprite = new THREE.Sprite(
                                             new THREE.SpriteMaterial({

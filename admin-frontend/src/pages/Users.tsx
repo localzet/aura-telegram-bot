@@ -13,8 +13,9 @@ import {
     Stack,
     Title,
     Pagination,
+    Text,
 } from '@mantine/core';
-import { IconSearch, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconSearch, IconEdit, IconTrash, IconExternalLink } from '@tabler/icons-react';
 import { api } from '../api/client';
 import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
@@ -116,26 +117,63 @@ export function UsersPage() {
 
             <Table striped highlightOnHover>
                 <Table.Thead>
-                    <Table.Tr>
-                        <Table.Th>ID</Table.Th>
-                        <Table.Th>Telegram ID</Table.Th>
-                        <Table.Th>Имя</Table.Th>
-                        <Table.Th>Уровень</Table.Th>
-                        <Table.Th>Скидка</Table.Th>
-                        <Table.Th>Рефералов</Table.Th>
-                        <Table.Th>Покупок</Table.Th>
-                        <Table.Th>Дата создания</Table.Th>
-                        <Table.Th>Действия</Table.Th>
-                    </Table.Tr>
+                        <Table.Tr>
+                            <Table.Th>ID</Table.Th>
+                            <Table.Th>Telegram</Table.Th>
+                            <Table.Th>Имя</Table.Th>
+                            <Table.Th>Уровень</Table.Th>
+                            <Table.Th>Подписка</Table.Th>
+                            <Table.Th>Скидка</Table.Th>
+                            <Table.Th>Рефералов</Table.Th>
+                            <Table.Th>Покупок</Table.Th>
+                            <Table.Th>Дата создания</Table.Th>
+                            <Table.Th>Действия</Table.Th>
+                        </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                     {users.map((user) => (
                         <Table.Tr key={user.id}>
                             <Table.Td>{user.id.substring(0, 8)}...</Table.Td>
-                            <Table.Td>{user.telegramId}</Table.Td>
+                            <Table.Td>
+                                <Group gap="xs">
+                                    <Text size="sm">{user.telegramId}</Text>
+                                    {user.telegramLink && (
+                                        <ActionIcon
+                                            component="a"
+                                            href={user.telegramLink}
+                                            target="_blank"
+                                            variant="subtle"
+                                            size="sm"
+                                        >
+                                            <IconExternalLink size={14} />
+                                        </ActionIcon>
+                                    )}
+                                </Group>
+                            </Table.Td>
                             <Table.Td>{user.fullName || user.username || '-'}</Table.Td>
                             <Table.Td>
                                 <Badge>{user.level}</Badge>
+                            </Table.Td>
+                            <Table.Td>
+                                {user.auraInfo ? (
+                                    <Stack gap={2}>
+                                        <Badge color={user.auraInfo.isActive ? 'green' : 'red'} size="sm">
+                                            {user.auraInfo.isActive ? 'Активна' : 'Истекла'}
+                                        </Badge>
+                                        {user.auraInfo.daysRemaining !== null && (
+                                            <Text size="xs" c="dimmed">
+                                                {user.auraInfo.daysRemaining} дн.
+                                            </Text>
+                                        )}
+                                        {user.auraInfo.daysExpired !== null && (
+                                            <Text size="xs" c="red">
+                                                -{user.auraInfo.daysExpired} дн.
+                                            </Text>
+                                        )}
+                                    </Stack>
+                                ) : (
+                                    <Text size="sm" c="dimmed">-</Text>
+                                )}
                             </Table.Td>
                             <Table.Td>{user.discount}%</Table.Td>
                             <Table.Td>{user.referralsCount || 0}</Table.Td>

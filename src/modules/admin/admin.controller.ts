@@ -303,9 +303,21 @@ export class AdminController {
         return { message: 'Closed mode updated' };
     }
 
+    @Put('config')
+    @UseGuards(AdminAuthGuard)
+    async updateConfig(@Body() body: any) {
+        if (body.pricing) {
+            await this.configService.updatePricingConfig(body.pricing);
+        }
+        if (body.closedMode !== undefined) {
+            await this.configService.updateClosedMode(body.closedMode);
+        }
+        return this.configService.getConfig();
+    }
+
     @Put('config/:key')
     @UseGuards(AdminAuthGuard)
-    async updateConfig(
+    async updateConfigKey(
         @Param('key') key: string,
         @Body() body: { value: string; description?: string; updatedBy?: string },
     ) {

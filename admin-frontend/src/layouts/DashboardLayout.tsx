@@ -7,7 +7,7 @@ import {
     NavLink as MantineNavLink,
     Stack,
 } from '@mantine/core';
-import { IconUsers, IconShoppingCart, IconChartBar, IconTicket, IconBan, IconLogout, IconNetwork } from '@tabler/icons-react';
+import { IconUsers, IconShoppingCart, IconChartBar, IconTicket, IconBan, IconLogout, IconNetwork, IconSettings } from '@tabler/icons-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,6 +18,7 @@ const navItems = [
     { to: '/referrals', label: 'Реферальная сеть', icon: IconNetwork },
     { to: '/promocodes', label: 'Промокоды', icon: IconTicket },
     { to: '/blacklist', label: 'Черный список', icon: IconBan },
+    { to: '/config', label: 'Конфигурация', icon: IconSettings },
 ];
 
 export function DashboardLayout() {

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+// In dev mode, use proxy. In production, use full URL or relative /api
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000/api` : '/api'));
 
 export const api = axios.create({
     baseURL: API_URL,

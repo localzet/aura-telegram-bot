@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve": "vite preview --port 3001 --host 0.0.0.0"
   },
   "dependencies": {
     "@mantine/core": "^8.3.6",

@@ -12,22 +12,31 @@ export class AdminConfigService {
 
     async getConfig(): Promise<Record<string, any>> {
         // Получаем конфигурацию из БД, если есть, иначе из env
-        const dbConfig = await this.prisma.config.findMany();
-        const configMap: Record<string, string> = {};
-        
-        dbConfig.forEach((item) => {
-            configMap[item.key] = item.value;
-        });
+        try {
+            const dbConfig = await (this.prisma as any).config?.findMany?.() || [];
+            const configMap: Record<string, string> = {};
+            
+            dbConfig.forEach((item: { key: string; value: string }) => {
+                configMap[item.key] = item.value;
+            });
 
-        // Получаем ценовую конфигурацию
-        const pricingConfig = getPricingConfig(this.config);
+            // Получаем ценовую конфигурацию
+            const pricingConfig = getPricingConfig(this.config);
 
-        return {
-            pricing: pricingConfig,
-            closedMode: dbConfig.find((c) => c.key === 'CLOSED_MODE_ENABLED')?.value === 'true' || 
-                       this.config.get<boolean>('CLOSED_MODE_ENABLED', false),
-            // Можно добавить другие настройки
-        };
+            return {
+                pricing: pricingConfig,
+                closedMode: dbConfig.find((c: { key: string; value: string }) => c.key === 'CLOSED_MODE_ENABLED')?.value === 'true' || 
+                           this.config.get<boolean>('CLOSED_MODE_ENABLED', false),
+                // Можно добавить другие настройки
+            };
+        } catch (error) {
+            // Если таблица Config еще не создана, возвращаем только env конфигурацию
+            const pricingConfig = getPricingConfig(this.config);
+            return {
+                pricing: pricingConfig,
+                closedMode: this.config.get<boolean>('CLOSED_MODE_ENABLED', false),
+            };
+        }
     }
 
     async updateConfig(key: string, value: string, description?: string, updatedBy?: string): Promise<void> {

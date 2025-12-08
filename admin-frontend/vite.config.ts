@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 export default defineConfig({
-    base: '/admin/',
+    base: '/',
     plugins: [react()],
     build: {
         outDir: './dist',
@@ -15,10 +15,21 @@ export default defineConfig({
         },
     },
     server: {
-        port: 3002,
+        port: 3001,
+        host: '0.0.0.0',
         proxy: {
             '/api': {
                 target: 'http://localhost:3000',
+                changeOrigin: true,
+            },
+        },
+    },
+    preview: {
+        port: 3001,
+        host: '0.0.0.0',
+        proxy: {
+            '/api': {
+                target: process.env.API_URL || 'http://localhost:3000',
                 changeOrigin: true,
             },
         },

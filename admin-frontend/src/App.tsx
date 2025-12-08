@@ -9,6 +9,7 @@ import { AnalyticsPage } from './pages/Analytics';
 import { PromoCodesPage } from './pages/PromoCodes';
 import { BlacklistPage } from './pages/Blacklist';
 import { ReferralsPage } from './pages/Referrals';
+import { ConfigPage } from './pages/Config';
 import { useAuthStore } from './store/authStore';
 
 const theme = createTheme({
@@ -39,7 +40,7 @@ export function App() {
     return (
         <MantineProvider theme={theme} defaultColorScheme="dark">
             <Notifications />
-            <BrowserRouter basename="/admin">
+            <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route
@@ -57,6 +58,7 @@ export function App() {
                         <Route path="promocodes" element={<PromoCodesPage />} />
                         <Route path="blacklist" element={<BlacklistPage />} />
                         <Route path="referrals" element={<ReferralsPage />} />
+                        <Route path="config" element={<ConfigPage />} />
                     </Route>
                 </Routes>
             </BrowserRouter>

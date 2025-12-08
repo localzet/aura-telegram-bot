@@ -16,5 +16,17 @@ module.exports = {
             },
             namespace: 'telegram-bot',
         },
+        {
+            name: 'aura-admin-frontend',
+            script: 'npx',
+            args: 'vite preview --port 3001 --host 0.0.0.0',
+            cwd: './admin-frontend',
+            watch: false,
+            instances: 1,
+            merge_logs: true,
+            env_production: {
+                NODE_ENV: 'production',
+            },
+        },
     ],
 };
