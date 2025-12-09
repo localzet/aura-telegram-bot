@@ -27,6 +27,7 @@ export default defineConfig({
     preview: {
         port: 3001,
         host: '0.0.0.0',
+        allowedHosts: ['aura-admin.localzet.net'],
         proxy: {
             '/api': {
                 target: process.env.API_URL || 'http://localhost:3000',
