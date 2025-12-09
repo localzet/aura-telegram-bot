@@ -18,12 +18,13 @@ module.exports = {
         },
         {
             name: 'aura-admin-frontend',
-            script: 'npx',
-            args: 'vite preview --port 3001 --host 0.0.0.0',
+            script: 'npm',
+            args: 'run serve',
             cwd: './admin-frontend',
             watch: false,
             instances: 1,
             merge_logs: true,
+            exec_mode: 'fork',
             env_production: {
                 NODE_ENV: 'production',
             },
