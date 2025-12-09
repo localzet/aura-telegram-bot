@@ -1,7 +1,13 @@
 import axios from 'axios';
 
 // In dev mode, use proxy. In production, use full URL or relative /api
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:3000/api` : '/api'));
+// Dev: proxy to local backend via /api
+// Prod: default to public backend host
+const API_URL =
+    import.meta.env.VITE_API_URL
+    || (import.meta.env.DEV
+        ? '/api'
+        : 'https://aura-bot.localzet.net/admin');
 
 export const api = axios.create({
     baseURL: API_URL,
